@@ -161,6 +161,88 @@ func TestSummarizeFileUsesCache(t *testing.T) {
 	}
 }
 
+func TestLoadConfigReadsUserProviderAndFlagOverrides(t *testing.T) {
+	dir := t.TempDir()
+	oldwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldwd) })
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	configHome := filepath.Join(dir, "config")
+	t.Setenv("XDG_CONFIG_HOME", configHome)
+	mustWrite(t, filepath.Join(configHome, "scout.toml"), "provider = \"claude\"\n")
+
+	cfg, paths, err := loadConfig([]string{"--provider", "codex", "README.md"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Provider != "codex" {
+		t.Fatalf("provider mismatch: %q", cfg.Provider)
+	}
+	if strings.Join(paths, ",") != "README.md" {
+		t.Fatalf("paths mismatch: %v", paths)
+	}
+}
+
+func TestExpandProviderArgs(t *testing.T) {
+	args, opts := expandProviderArgs(
+		[]string{"exec", "{model_args}", "{prompt}", "{output}"},
+		"--model",
+		"fast-model",
+		"/tmp/out",
+		"prompt text",
+	)
+	got := strings.Join(args, "\x00")
+	want := strings.Join([]string{"exec", "--model", "fast-model", "prompt text", "/tmp/out"}, "\x00")
+	if got != want {
+		t.Fatalf("args mismatch\nwant: %q\n got: %q", want, got)
+	}
+	if opts.UseStdin {
+		t.Fatal("prompt placeholder should disable stdin")
+	}
+	if !opts.UseOutputFile {
+		t.Fatal("output placeholder should enable output file")
+	}
+}
+
+func TestCLISummarizerReadsStdout(t *testing.T) {
+	summarizer := &cliSummarizer{
+		provider: "test",
+		config: CLIProviderConfig{
+			Command: "sh",
+			Args:    []string{"-c", "cat >/dev/null; printf 'Stdout summary.'"},
+		},
+	}
+	got, err := summarizer.Summarize(context.Background(), "note.md", "hello", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(got) != "Stdout summary." {
+		t.Fatalf("summary mismatch: %q", got)
+	}
+}
+
+func TestCLISummarizerReadsOutputFile(t *testing.T) {
+	summarizer := &cliSummarizer{
+		provider: "test",
+		config: CLIProviderConfig{
+			Command: "sh",
+			Args:    []string{"-c", "cat >/dev/null; printf 'File summary.' > \"$1\"", "sh", "{output}"},
+		},
+	}
+	got, err := summarizer.Summarize(context.Background(), "note.md", "hello", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(got) != "File summary." {
+		t.Fatalf("summary mismatch: %q", got)
+	}
+}
+
 type failingSummarizer struct{}
 
 func (failingSummarizer) Summarize(context.Context, string, string, bool) (string, error) {

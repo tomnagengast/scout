@@ -59,10 +59,10 @@ cd scout
 just build   # or: go build -o scout .
 ```
 
-Scout generates summaries with an LLM, so it needs an API key:
+Scout generates summaries by shelling out to a headless CLI agent already installed on your machine. By default it uses `codex exec`; `claude -p` is also supported when Claude Code is installed.
 
 ```sh
-export ANTHROPIC_API_KEY=sk-ant-...
+codex login   # or configure Claude Code if you use --provider claude
 ```
 
 ## Usage
@@ -73,8 +73,9 @@ scout [paths...] [flags]
 Flags:
   -f, --format <fmt>      Output format: list (default), skill, json
   -w, --write <file>      Write the index into a file (idempotent; see "Writing to files")
-  -m, --model <model>     Model used for summaries (default: $SCOUT_MODEL or a small, fast model)
-  -c, --concurrency <n>   Files summarized in parallel (default: 8)
+      --provider <name>   Summarizer provider: codex, claude, or a configured provider
+  -m, --model <model>     Model passed to the summarizer provider (default: provider default)
+  -c, --concurrency <n>   Files summarized in parallel (default: 2)
       --max-bytes <n>     Max bytes read per file before truncation (default: 16384)
       --no-cache          Bypass the summary cache and re-summarize everything
       --cache-dir <path>  Cache location (default: $XDG_CACHE_HOME/scout)
@@ -158,30 +159,67 @@ This makes `scout --write` safe to run in a pre-commit hook or CI job: the manag
 
 1. **Discover** — resolve paths/globs, walk directories, apply `.gitignore` and `.scoutignore`.
 2. **Read** — load each file up to `--max-bytes` (large files are truncated at a token-safe boundary; scout summarizes the head, which carries the intent for most docs).
-3. **Summarize** — send each file to the model with a prompt tuned to produce a single dense description in the agentskills.io style: what the file is for, and explicit boundaries (the "Does NOT cover…" pattern) so an agent doesn't over-trust a file's scope.
-4. **Cache** — keyed on a hash of file content + model + prompt version. Unchanged files are never re-summarized, so re-runs are fast and nearly free. This is what makes scout cheap enough to wire into CI.
+3. **Summarize** — send each file to a headless local CLI agent with a prompt tuned to produce a single dense description in the agentskills.io style: what the file is for, and explicit boundaries (the "Does NOT cover…" pattern) so an agent doesn't over-trust a file's scope.
+4. **Cache** — keyed on a hash of file content + provider + model + provider command + prompt version. Unchanged files are never re-summarized, so re-runs are fast and nearly free. This is what makes scout cheap enough to wire into CI.
 5. **Emit** — render in the requested format, optionally into a managed block in a target file.
 
-Summaries are generated concurrently (`--concurrency`), and output ordering is stable regardless of completion order, so diffs stay clean.
+Summaries are generated concurrently (`--concurrency`), and output ordering is stable regardless of completion order, so diffs stay clean. The default concurrency is intentionally conservative because each worker starts a local CLI agent process.
 
 ## Configuration
 
-Flags win over environment variables, which win over a `scout.toml` in the working directory or repo root.
+Flags win over environment variables, which win over a project `scout.toml` in the working directory or repo root, which wins over the user config at `$XDG_CONFIG_HOME/scout.toml` or `~/.config/scout.toml`.
 
 ```toml
-# scout.toml
-model       = "claude-haiku-4-5"
-concurrency = 8
+# ~/.config/scout.toml
+provider    = "codex"
+concurrency = 2
 max_bytes   = 16384
+
+[providers.codex]
+command = "codex"
+args = [
+  "exec",
+  "--ephemeral",
+  "--skip-git-repo-check",
+  "--sandbox", "read-only",
+  "--ask-for-approval", "never",
+  "--color", "never",
+  "--output-last-message", "{output}",
+  "{model_args}",
+  "-"
+]
+model_arg = "--model"
+
+[providers.claude]
+command = "claude"
+args = [
+  "-p",
+  "--output-format", "text",
+  "--permission-mode", "plan",
+  "--max-turns", "1",
+  "{model_args}",
+  "{prompt}"
+]
+model_arg = "--model"
 
 # extra ignore globs, layered on top of .gitignore / .scoutignore
 ignore = ["**/CHANGELOG.md", "**/vendor/**"]
 ```
 
+The built-in `codex` and `claude` providers use those command shapes automatically; you only need to add provider blocks when you want to point at a wrapper, change flags, or define a new provider name. `--provider claude` overrides the configured provider for one run.
+
+Provider arg placeholders:
+
+| Placeholder    | Description                                        |
+| -------------- | -------------------------------------------------- |
+| `{model_args}` | Expands to `<model_arg> <model>` when a model is set. |
+| `{output}`     | Path to a temp file scout reads after the CLI exits. |
+| `{prompt}`     | Inserts the prompt as an argv value instead of stdin. |
+
 | Variable          | Description                                  |
 | ----------------- | -------------------------------------------- |
-| `ANTHROPIC_API_KEY` | API key for summary generation.            |
-| `SCOUT_MODEL`     | Default model.                               |
+| `SCOUT_PROVIDER`  | Default summarizer provider.                 |
+| `SCOUT_MODEL`     | Model passed to the summarizer provider.     |
 | `SCOUT_CACHE_DIR` | Override the cache directory.                |
 
 ## Context-engineering patterns
@@ -214,7 +252,7 @@ Scout is complementary to all of these. It's the layer that decides *whether* yo
 
 ## Roadmap
 
-- [ ] Pluggable model backends (OpenAI, local via Ollama)
+- [ ] Additional built-in CLI providers (OpenAI Codex variants, local via Ollama)
 - [ ] `--depth` to summarize directories as well as files (rolled-up tree descriptions)
 - [ ] Incremental `--watch` mode
 - [ ] Custom prompt/description templates per project

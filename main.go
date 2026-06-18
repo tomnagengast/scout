@@ -10,8 +10,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	defaultModel       = "claude-haiku-4-5"
-	defaultConcurrency = 8
+	defaultProvider    = "codex"
+	defaultConcurrency = 2
 	defaultMaxBytes    = 16_384
 	promptVersion      = "v1"
 	scoutStart         = "<!-- scout:start -->"
@@ -36,15 +36,23 @@ const (
 )
 
 type Config struct {
-	Format      string   `toml:"format"`
-	Write       string   `toml:"write"`
-	Model       string   `toml:"model"`
-	Concurrency int      `toml:"concurrency"`
-	MaxBytes    int      `toml:"max_bytes"`
-	NoCache     bool     `toml:"no_cache"`
-	CacheDir    string   `toml:"cache_dir"`
-	Quiet       bool     `toml:"quiet"`
-	Ignore      []string `toml:"ignore"`
+	Format      string                       `toml:"format"`
+	Write       string                       `toml:"write"`
+	Provider    string                       `toml:"provider"`
+	Model       string                       `toml:"model"`
+	Concurrency int                          `toml:"concurrency"`
+	MaxBytes    int                          `toml:"max_bytes"`
+	NoCache     bool                         `toml:"no_cache"`
+	CacheDir    string                       `toml:"cache_dir"`
+	Quiet       bool                         `toml:"quiet"`
+	Ignore      []string                     `toml:"ignore"`
+	Providers   map[string]CLIProviderConfig `toml:"providers"`
+}
+
+type CLIProviderConfig struct {
+	Command  string   `toml:"command"`
+	Args     []string `toml:"args"`
+	ModelArg string   `toml:"model_arg"`
 }
 
 type Entry struct {
@@ -81,10 +89,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		return errors.New("no files matched")
 	}
 
-	summarizer := &anthropicSummarizer{
-		client: http.DefaultClient,
-		model:  cfg.Model,
-		key:    os.Getenv("ANTHROPIC_API_KEY"),
+	summarizer, err := newSummarizer(cfg)
+	if err != nil {
+		return err
 	}
 	entries, err := summarizeFiles(ctx, files, cfg, summarizer, stderr)
 	if err != nil {
@@ -105,15 +112,18 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 func loadConfig(args []string) (Config, []string, error) {
 	cfg := Config{
 		Format:      "list",
-		Model:       defaultModel,
+		Provider:    defaultProvider,
 		Concurrency: defaultConcurrency,
 		MaxBytes:    defaultMaxBytes,
 		CacheDir:    defaultCacheDir(),
 	}
-	if configPath := findConfigFile(); configPath != "" {
+	for _, configPath := range configFiles() {
 		if _, err := toml.DecodeFile(configPath, &cfg); err != nil {
 			return cfg, nil, fmt.Errorf("read %s: %w", configPath, err)
 		}
+	}
+	if provider := os.Getenv("SCOUT_PROVIDER"); provider != "" {
+		cfg.Provider = provider
 	}
 	if model := os.Getenv("SCOUT_MODEL"); model != "" {
 		cfg.Model = model
@@ -128,8 +138,9 @@ func loadConfig(args []string) (Config, []string, error) {
 	fs.StringVar(&cfg.Format, "f", cfg.Format, "output format: list, skill, json")
 	fs.StringVar(&cfg.Write, "write", cfg.Write, "write the index into a file")
 	fs.StringVar(&cfg.Write, "w", cfg.Write, "write the index into a file")
-	fs.StringVar(&cfg.Model, "model", cfg.Model, "model used for summaries")
-	fs.StringVar(&cfg.Model, "m", cfg.Model, "model used for summaries")
+	fs.StringVar(&cfg.Provider, "provider", cfg.Provider, "summarizer provider: codex, claude, or a configured provider")
+	fs.StringVar(&cfg.Model, "model", cfg.Model, "model passed to the summarizer provider")
+	fs.StringVar(&cfg.Model, "m", cfg.Model, "model passed to the summarizer provider")
 	fs.IntVar(&cfg.Concurrency, "concurrency", cfg.Concurrency, "files summarized in parallel")
 	fs.IntVar(&cfg.Concurrency, "c", cfg.Concurrency, "files summarized in parallel")
 	fs.IntVar(&cfg.MaxBytes, "max-bytes", cfg.MaxBytes, "max bytes read per file")
@@ -152,7 +163,29 @@ func loadConfig(args []string) (Config, []string, error) {
 	return cfg, fs.Args(), nil
 }
 
-func findConfigFile() string {
+func configFiles() []string {
+	var files []string
+	if userPath := userConfigFile(); fileExists(userPath) {
+		files = append(files, userPath)
+	}
+	if projectPath := findProjectConfigFile(); projectPath != "" && projectPath != userConfigFile() {
+		files = append(files, projectPath)
+	}
+	return files
+}
+
+func userConfigFile() string {
+	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
+		return filepath.Join(xdg, "scout.toml")
+	}
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return ""
+	}
+	return filepath.Join(home, ".config", "scout.toml")
+}
+
+func findProjectConfigFile() string {
 	dir, err := os.Getwd()
 	if err != nil {
 		return ""
@@ -171,6 +204,14 @@ func findConfigFile() string {
 		}
 		dir = parent
 	}
+}
+
+func fileExists(path string) bool {
+	if path == "" {
+		return false
+	}
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 func defaultCacheDir() string {
@@ -378,7 +419,7 @@ func summarizeFile(ctx context.Context, path string, cfg Config, summarizer Summ
 	if err != nil {
 		return Entry{}, err
 	}
-	key := cacheKey(path, content, cfg.Model)
+	key := cacheKey(path, content, cfg)
 	if !cfg.NoCache {
 		if description, ok := readCache(cfg.CacheDir, key); ok {
 			return Entry{Path: path, Name: entryName(path), Description: description}, nil
@@ -423,8 +464,19 @@ func utf8Valid(data []byte) bool {
 	return utf8.Valid(data)
 }
 
-func cacheKey(path, content, model string) string {
-	sum := sha256.Sum256([]byte(promptVersion + "\x00" + model + "\x00" + path + "\x00" + content))
+func cacheKey(path, content string, cfg Config) string {
+	providerConfig, _ := providerConfigFor(cfg, cfg.Provider)
+	fingerprint := strings.Join([]string{
+		promptVersion,
+		cfg.Provider,
+		cfg.Model,
+		providerConfig.Command,
+		strings.Join(providerConfig.Args, "\x00"),
+		providerConfig.ModelArg,
+		path,
+		content,
+	}, "\x00")
+	sum := sha256.Sum256([]byte(fingerprint))
 	return hex.EncodeToString(sum[:])
 }
 
@@ -469,98 +521,186 @@ type Summarizer interface {
 	Summarize(ctx context.Context, path, content string, truncated bool) (string, error)
 }
 
-type anthropicSummarizer struct {
-	client *http.Client
-	model  string
-	key    string
+type cliSummarizer struct {
+	provider string
+	model    string
+	config   CLIProviderConfig
 }
 
-type messageRequest struct {
-	Model     string           `json:"model"`
-	MaxTokens int              `json:"max_tokens"`
-	System    string           `json:"system"`
-	Messages  []messagePayload `json:"messages"`
+var defaultCLIProviders = map[string]CLIProviderConfig{
+	"codex": {
+		Command: "codex",
+		Args: []string{
+			"exec",
+			"--ephemeral",
+			"--skip-git-repo-check",
+			"--sandbox", "read-only",
+			"--ask-for-approval", "never",
+			"--color", "never",
+			"--output-last-message", "{output}",
+			"{model_args}",
+			"-",
+		},
+		ModelArg: "--model",
+	},
+	"claude": {
+		Command: "claude",
+		Args: []string{
+			"-p",
+			"--output-format", "text",
+			"--permission-mode", "plan",
+			"--max-turns", "1",
+			"{model_args}",
+			"{prompt}",
+		},
+		ModelArg: "--model",
+	},
 }
 
-type messagePayload struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-type messageResponse struct {
-	Content []struct {
-		Type string `json:"type"`
-		Text string `json:"text"`
-	} `json:"content"`
-	Error *struct {
-		Message string `json:"message"`
-	} `json:"error"`
-}
-
-func (s *anthropicSummarizer) Summarize(ctx context.Context, path, content string, truncated bool) (string, error) {
-	if s.key == "" {
-		return "", errors.New("ANTHROPIC_API_KEY is required")
+func newSummarizer(cfg Config) (Summarizer, error) {
+	providerConfig, err := providerConfigFor(cfg, cfg.Provider)
+	if err != nil {
+		return nil, err
 	}
+	return &cliSummarizer{
+		provider: cfg.Provider,
+		model:    cfg.Model,
+		config:   providerConfig,
+	}, nil
+}
+
+func providerConfigFor(cfg Config, provider string) (CLIProviderConfig, error) {
+	provider = strings.TrimSpace(provider)
+	if provider == "" {
+		provider = defaultProvider
+	}
+
+	base, ok := defaultCLIProviders[provider]
+	if configured, hasConfig := cfg.Providers[provider]; hasConfig {
+		if !ok {
+			base = CLIProviderConfig{}
+		}
+		if configured.Command != "" {
+			base.Command = configured.Command
+		}
+		if configured.Args != nil {
+			base.Args = configured.Args
+		}
+		if configured.ModelArg != "" {
+			base.ModelArg = configured.ModelArg
+		}
+		ok = true
+	}
+	if !ok || base.Command == "" {
+		return CLIProviderConfig{}, fmt.Errorf("unknown summarizer provider %q", provider)
+	}
+	return base, nil
+}
+
+func (s *cliSummarizer) Summarize(ctx context.Context, path, content string, truncated bool) (string, error) {
+	prompt := summaryPrompt(path, content, truncated)
+	outputPath, cleanup, err := tempOutputPath()
+	if err != nil {
+		return "", err
+	}
+	defer cleanup()
+
+	args, opts := expandProviderArgs(s.config.Args, s.config.ModelArg, s.model, outputPath, prompt)
+	cmd := exec.CommandContext(ctx, s.config.Command, args...)
+	cmd.Env = append(os.Environ(), "NO_COLOR=1", "CLICOLOR=0", "TERM=dumb")
+	if opts.UseStdin {
+		cmd.Stdin = strings.NewReader(prompt)
+	}
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("%s provider: %w: %s", s.provider, err, compactCommandOutput(stdout.String(), stderr.String()))
+	}
+
+	if opts.UseOutputFile {
+		data, err := os.ReadFile(outputPath)
+		if err != nil {
+			return "", fmt.Errorf("%s provider output: %w", s.provider, err)
+		}
+		return string(data), nil
+	}
+	return stdout.String(), nil
+}
+
+func summaryPrompt(path, content string, truncated bool) string {
 	truncatedNote := ""
 	if truncated {
 		truncatedNote = "\nThe file was truncated; summarize only the visible head without guessing hidden content."
 	}
-	reqBody := messageRequest{
-		Model:     s.model,
-		MaxTokens: 96,
-		System: strings.Join([]string{
-			"Write one dense, action-oriented file description for an AI agent building a progressive-disclosure map.",
-			"Describe what the file is for and its boundaries. Mention explicit exclusions only when the file makes them clear.",
-			"Return exactly one sentence, no markdown, no path prefix, no quotes.",
-		}, " "),
-		Messages: []messagePayload{{
-			Role: "user",
-			Content: fmt.Sprintf("Path: %s%s\n\nFile content:\n%s",
-				path, truncatedNote, content),
-		}},
-	}
-	data, err := json.Marshal(reqBody)
-	if err != nil {
-		return "", err
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.anthropic.com/v1/messages", bytes.NewReader(data))
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("content-type", "application/json")
-	req.Header.Set("x-api-key", s.key)
-	req.Header.Set("anthropic-version", "2023-06-01")
+	return fmt.Sprintf(`Write one dense, action-oriented file description for an AI agent building a progressive-disclosure map.
 
-	client := s.client
-	if client == nil {
-		client = http.DefaultClient
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
+Describe what the file is for and its boundaries. Mention explicit exclusions only when the file makes them clear.
+Return exactly one sentence, no markdown, no path prefix, no quotes.
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	var decoded messageResponse
-	if err := json.Unmarshal(body, &decoded); err != nil {
-		return "", fmt.Errorf("anthropic response: %w", err)
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		if decoded.Error != nil && decoded.Error.Message != "" {
-			return "", fmt.Errorf("anthropic: %s", decoded.Error.Message)
-		}
-		return "", fmt.Errorf("anthropic: status %d", resp.StatusCode)
-	}
-	for _, block := range decoded.Content {
-		if block.Type == "text" && strings.TrimSpace(block.Text) != "" {
-			return block.Text, nil
+Path: %s%s
+
+File content:
+%s`, path, truncatedNote, content)
+}
+
+type expandedArgsOptions struct {
+	UseStdin      bool
+	UseOutputFile bool
+}
+
+func expandProviderArgs(args []string, modelArg, model, outputPath, prompt string) ([]string, expandedArgsOptions) {
+	opts := expandedArgsOptions{UseStdin: true}
+	var expanded []string
+	for _, arg := range args {
+		switch arg {
+		case "{model_args}":
+			if model != "" && modelArg != "" {
+				expanded = append(expanded, modelArg, model)
+			}
+		case "{output}":
+			expanded = append(expanded, outputPath)
+			opts.UseOutputFile = true
+		case "{prompt}":
+			expanded = append(expanded, prompt)
+			opts.UseStdin = false
+		default:
+			arg = strings.ReplaceAll(arg, "{output}", outputPath)
+			arg = strings.ReplaceAll(arg, "{model}", model)
+			if strings.Contains(arg, "{prompt}") {
+				opts.UseStdin = false
+				arg = strings.ReplaceAll(arg, "{prompt}", prompt)
+			}
+			expanded = append(expanded, arg)
 		}
 	}
-	return "", errors.New("anthropic: empty response")
+	return expanded, opts
+}
+
+func tempOutputPath() (string, func(), error) {
+	f, err := os.CreateTemp("", "scout-summary-*")
+	if err != nil {
+		return "", nil, err
+	}
+	path := f.Name()
+	if err := f.Close(); err != nil {
+		_ = os.Remove(path)
+		return "", nil, err
+	}
+	return path, func() { _ = os.Remove(path) }, nil
+}
+
+func compactCommandOutput(stdout, stderr string) string {
+	output := strings.TrimSpace(strings.Join([]string{stderr, stdout}, "\n"))
+	if output == "" {
+		return "no output"
+	}
+	const max = 2_000
+	if len(output) > max {
+		return output[:max] + "...(truncated)"
+	}
+	return output
 }
 
 func renderEntries(entries []Entry, format string) ([]byte, error) {

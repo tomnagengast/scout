@@ -2,9 +2,7 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
@@ -17,17 +15,21 @@ const (
 	defaultMaxBytes    = 16_384
 )
 
-func loadConfig(args []string) (Config, []string, error) {
-	cfg := Config{
+func defaultConfig() Config {
+	return Config{
 		Format:      "list",
 		Provider:    defaultProvider,
 		Concurrency: defaultConcurrency,
 		MaxBytes:    defaultMaxBytes,
 		CacheDir:    defaultCacheDir(),
 	}
+}
+
+func loadConfig(flagCfg Config, changed map[string]bool) (Config, error) {
+	cfg := defaultConfig()
 	for _, configPath := range configFiles() {
 		if _, err := toml.DecodeFile(configPath, &cfg); err != nil {
-			return cfg, nil, fmt.Errorf("read %s: %w", configPath, err)
+			return cfg, fmt.Errorf("read %s: %w", configPath, err)
 		}
 	}
 	if provider := os.Getenv("SCOUT_PROVIDER"); provider != "" {
@@ -40,35 +42,47 @@ func loadConfig(args []string) (Config, []string, error) {
 		cfg.CacheDir = cacheDir
 	}
 
-	fs := flag.NewFlagSet("scout", flag.ContinueOnError)
-	fs.SetOutput(io.Discard)
-	fs.StringVar(&cfg.Format, "format", cfg.Format, "output format: list, skill, json")
-	fs.StringVar(&cfg.Format, "f", cfg.Format, "output format: list, skill, json")
-	fs.StringVar(&cfg.Write, "write", cfg.Write, "write the index into a file")
-	fs.StringVar(&cfg.Write, "w", cfg.Write, "write the index into a file")
-	fs.StringVar(&cfg.Provider, "provider", cfg.Provider, "summarizer provider: codex, claude, or a configured provider")
-	fs.StringVar(&cfg.Model, "model", cfg.Model, "model passed to the summarizer provider")
-	fs.StringVar(&cfg.Model, "m", cfg.Model, "model passed to the summarizer provider")
-	fs.IntVar(&cfg.Concurrency, "concurrency", cfg.Concurrency, "files summarized in parallel")
-	fs.IntVar(&cfg.Concurrency, "c", cfg.Concurrency, "files summarized in parallel")
-	fs.IntVar(&cfg.MaxBytes, "max-bytes", cfg.MaxBytes, "max bytes read per file")
-	fs.BoolVar(&cfg.NoCache, "no-cache", cfg.NoCache, "bypass the summary cache")
-	fs.StringVar(&cfg.CacheDir, "cache-dir", cfg.CacheDir, "cache location")
-	fs.BoolVar(&cfg.Quiet, "quiet", cfg.Quiet, "suppress progress output on stderr")
-
-	if err := fs.Parse(args); err != nil {
-		return cfg, nil, err
-	}
+	applyChangedFlags(&cfg, flagCfg, changed)
 	if cfg.Concurrency < 1 {
-		return cfg, nil, errors.New("concurrency must be at least 1")
+		return cfg, errors.New("concurrency must be at least 1")
 	}
 	if cfg.MaxBytes < 1 {
-		return cfg, nil, errors.New("max-bytes must be at least 1")
+		return cfg, errors.New("max-bytes must be at least 1")
 	}
 	if cfg.Format != "list" && cfg.Format != "skill" && cfg.Format != "json" {
-		return cfg, nil, fmt.Errorf("unsupported format %q", cfg.Format)
+		return cfg, fmt.Errorf("unsupported format %q", cfg.Format)
 	}
-	return cfg, fs.Args(), nil
+	return cfg, nil
+}
+
+func applyChangedFlags(cfg *Config, flagCfg Config, changed map[string]bool) {
+	if changed["format"] {
+		cfg.Format = flagCfg.Format
+	}
+	if changed["write"] {
+		cfg.Write = flagCfg.Write
+	}
+	if changed["provider"] {
+		cfg.Provider = flagCfg.Provider
+	}
+	if changed["model"] {
+		cfg.Model = flagCfg.Model
+	}
+	if changed["concurrency"] {
+		cfg.Concurrency = flagCfg.Concurrency
+	}
+	if changed["max-bytes"] {
+		cfg.MaxBytes = flagCfg.MaxBytes
+	}
+	if changed["no-cache"] {
+		cfg.NoCache = flagCfg.NoCache
+	}
+	if changed["cache-dir"] {
+		cfg.CacheDir = flagCfg.CacheDir
+	}
+	if changed["quiet"] {
+		cfg.Quiet = flagCfg.Quiet
+	}
 }
 
 func configFiles() []string {

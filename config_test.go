@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 func TestLoadConfigReadsUserProviderAndFlagOverrides(t *testing.T) {
@@ -22,14 +24,21 @@ func TestLoadConfigReadsUserProviderAndFlagOverrides(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", configHome)
 	mustWrite(t, filepath.Join(configHome, "scout.toml"), "provider = \"claude\"\n")
 
-	cfg, paths, err := loadConfig([]string{"--provider", "codex", "README.md"})
+	flagCfg := defaultConfig()
+	cmd := &cobra.Command{}
+	bindConfigFlags(cmd, &flagCfg)
+	if err := cmd.ParseFlags([]string{"--provider", "codex", "README.md"}); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := loadConfig(flagCfg, changedConfigFlags(cmd))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if cfg.Provider != "codex" {
 		t.Fatalf("provider mismatch: %q", cfg.Provider)
 	}
-	if strings.Join(paths, ",") != "README.md" {
-		t.Fatalf("paths mismatch: %v", paths)
+	if strings.Join(cmd.Flags().Args(), ",") != "README.md" {
+		t.Fatalf("paths mismatch: %v", cmd.Flags().Args())
 	}
 }

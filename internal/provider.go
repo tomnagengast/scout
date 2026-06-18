@@ -1,4 +1,4 @@
-package main
+package scout
 
 import (
 	"bytes"
@@ -23,7 +23,6 @@ var defaultCLIProviders = map[string]CLIProviderConfig{
 			"--ephemeral",
 			"--skip-git-repo-check",
 			"--sandbox", "read-only",
-			"--ask-for-approval", "never",
 			"--color", "never",
 			"--output-last-message", "{output}",
 			"{model_args}",

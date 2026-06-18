@@ -3,7 +3,7 @@ go = "1.26.3"
 
 [tasks.fmt]
 description = "Format Go source"
-run = "gofmt -w ."
+run = "gofmt -w ./cmd ./internal"
 
 [tasks.test]
 description = "Run Go tests"
@@ -11,12 +11,12 @@ run = "go test ./..."
 
 [tasks.build]
 description = "Build the scout binary"
-run = "go build -o ./scout ."
+run = "go build -o ./scout ./cmd"
 
 [tasks.install-local]
 description = "Install scout binary to ~/.local/bin"
 run = '''
-go build -o ./scout .
+go build -o ./scout ./cmd
 
 mkdir -p "${HOME}/.local/bin"
 tmp="${HOME}/.local/bin/scout.new"

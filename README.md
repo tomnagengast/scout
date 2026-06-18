@@ -45,18 +45,12 @@ scout docs/**
 brew install tomnagengast/tap/scout
 ```
 
-**Go**
-
-```sh
-go install github.com/tomnagengast/scout@latest
-```
-
 **From source**
 
 ```sh
 git clone https://github.com/tomnagengast/scout
 cd scout
-just build   # or: go build -o scout .
+just build   # or: go build -o scout ./cmd
 ```
 
 Scout generates summaries by shelling out to a headless CLI agent already installed on your machine. By default it uses `codex exec`; `claude -p` is also supported when Claude Code is installed.

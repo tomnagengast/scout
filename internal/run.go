@@ -1,17 +1,10 @@
-package main
+package scout
 
 import (
 	"context"
 	"errors"
 	"io"
-	"os"
 )
-
-func main() {
-	if err := execute(context.Background(), os.Args[1:], os.Stdout, os.Stderr); err != nil {
-		os.Exit(1)
-	}
-}
 
 func run(ctx context.Context, cfg Config, paths []string, stdout, stderr io.Writer) error {
 	if len(paths) == 0 {

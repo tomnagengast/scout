@@ -1,4 +1,4 @@
-package main
+package scout
 
 type Config struct {
 	Format      string                       `toml:"format"`

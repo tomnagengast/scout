@@ -1,8 +1,8 @@
 build:
-	go build -o scout .
+	go build -o scout ./cmd
 
 test:
 	go test ./...
 
 fmt:
-	gofmt -w *.go
+	gofmt -w ./cmd ./internal

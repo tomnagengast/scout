@@ -1,4 +1,4 @@
-package main
+package scout
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func execute(ctx context.Context, args []string, stdout, stderr io.Writer) error {
+func Execute(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	cmd := newRootCommand(ctx, stdout, stderr)
 	cmd.SetArgs(args)
 	err := cmd.Execute()

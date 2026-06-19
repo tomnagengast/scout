@@ -2,6 +2,13 @@
 
 All notable changes to `scout` are tracked here.
 
+## v0.1.1 - 2026-06-19
+
+- Updates `github.com/BurntSushi/toml` from `1.5.0` to `1.6.0`.
+- Updates `github.com/bmatcuk/doublestar/v4` from `4.9.1` to `4.10.0`.
+- Adds a Claude Code skill for using `scout`.
+- Corrects Homebrew cask install documentation.
+
 ## v0.1.0 - 2026-06-19
 
 - Initial public release.

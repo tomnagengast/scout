@@ -9,23 +9,39 @@ import (
 )
 
 func renderEntries(entries []Entry, format string) ([]byte, error) {
+	return renderStdout(entries, format)
+}
+
+func renderStdout(entries []Entry, format string) ([]byte, error) {
 	switch format {
 	case "list":
 		return renderList(entries), nil
 	case "skill":
 		return renderSkill(entries), nil
 	case "json":
-		data, err := json.MarshalIndent(entries, "", "  ")
-		if err != nil {
-			return nil, err
-		}
-		return append(data, '\n'), nil
+		return renderJSON(entries)
 	default:
 		return nil, fmt.Errorf("unsupported format %q", format)
 	}
 }
 
+func renderJSON(entries []Entry) ([]byte, error) {
+	data, err := json.MarshalIndent(entries, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return append(data, '\n'), nil
+}
+
 func renderList(entries []Entry) []byte {
+	return renderAlignedList(entries, "")
+}
+
+func renderManagedList(entries []Entry) []byte {
+	return renderAlignedList(entries, "- ")
+}
+
+func renderAlignedList(entries []Entry, prefix string) []byte {
 	width := 0
 	for _, entry := range entries {
 		if len(entry.Path) > width {
@@ -34,7 +50,7 @@ func renderList(entries []Entry) []byte {
 	}
 	var b strings.Builder
 	for _, entry := range entries {
-		fmt.Fprintf(&b, "%-*s  %s\n", width, entry.Path, entry.Description)
+		fmt.Fprintf(&b, "%s%-*s  %s\n", prefix, width, entry.Path, entry.Description)
 	}
 	return []byte(b.String())
 }
@@ -46,20 +62,6 @@ func renderSkill(entries []Entry) []byte {
 			b.WriteByte('\n')
 		}
 		fmt.Fprintf(&b, "%s\n---\nname: %s\ndescription: %s\n---\n", entry.Path, yamlScalar(entry.Name), yamlScalar(entry.Description))
-	}
-	return []byte(b.String())
-}
-
-func renderManagedList(entries []Entry) []byte {
-	width := 0
-	for _, entry := range entries {
-		if len(entry.Path) > width {
-			width = len(entry.Path)
-		}
-	}
-	var b strings.Builder
-	for _, entry := range entries {
-		fmt.Fprintf(&b, "- %-*s  %s\n", width, entry.Path, entry.Description)
 	}
 	return []byte(b.String())
 }

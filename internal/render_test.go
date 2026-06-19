@@ -16,8 +16,20 @@ func TestRenderListPadsPaths(t *testing.T) {
 	}
 }
 
+func TestRenderSkillIncludesPathAndFrontmatter(t *testing.T) {
+	got := string(renderSkill([]Entry{{
+		Path:        "skills/gh.md",
+		Name:        "gh",
+		Description: "GitHub CLI for repos.",
+	}}))
+	want := "skills/gh.md\n---\nname: gh\ndescription: GitHub CLI for repos.\n---\n"
+	if got != want {
+		t.Fatalf("renderSkill mismatch\nwant:\n%s\ngot:\n%s", want, got)
+	}
+}
+
 func TestRenderJSONIncludesType(t *testing.T) {
-	got, err := renderEntries([]Entry{{
+	got, err := renderStdout([]Entry{{
 		Type:        entryTypeDir,
 		Path:        "docs",
 		Name:        "docs",

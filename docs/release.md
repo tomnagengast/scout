@@ -42,4 +42,8 @@ GoReleaser publishes a Homebrew cask. Install the latest release with:
 ```sh
 brew tap tomnagengast/tap
 brew install --cask tomnagengast/tap/scout-cli
+scout --version
+scout README.md --quiet
 ```
+
+If GitHub release publishing succeeds but the tap update fails, fix forward by rerunning the release workflow after correcting the tap token or by manually updating the generated cask with the published artifact URLs and checksums.

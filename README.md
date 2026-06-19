@@ -4,6 +4,8 @@
 
 [![Status](https://img.shields.io/badge/status-alpha-orange.svg)](#roadmap)
 [![CI](https://github.com/tomnagengast/scout/actions/workflows/ci.yml/badge.svg)](https://github.com/tomnagengast/scout/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/tomnagengast/scout?display_name=tag)](https://github.com/tomnagengast/scout/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 ---
 
@@ -286,3 +288,8 @@ Scout is complementary to all of these. It's the layer that decides *whether* yo
 ## Contributing
 
 Issues and PRs welcome. Please run the test suite and update the relevant docs before submitting.
+
+## Related tools
+
+- [`agent-memoryd`](https://github.com/tomnagengast/agent-memoryd) stores durable local memories and exposes them to agents over MCP.
+- [`agent-insights`](https://github.com/tomnagengast/agent-insights) turns local agent sessions into reports that show usage, friction, and instruction opportunities.

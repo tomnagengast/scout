@@ -68,6 +68,8 @@ scout [paths...] [flags]
 Flags:
   -f, --format <fmt>      Output format: list (default), skill, json
   -w, --write <file>      Write the index into a file (idempotent; see "Writing to files")
+      --type <type>       Entry type to summarize: file (default) or dir
+      --max-depth <n>     Maximum directory depth to walk, 0 for unlimited
       --provider <name>   Summarizer provider: codex, claude, or a configured provider
   -m, --model <model>     Model passed to the summarizer provider (default: provider default)
   -c, --concurrency <n>   Files summarized in parallel (default: 2)
@@ -78,7 +80,13 @@ Flags:
   -v, --version           Print version information
 ```
 
-`paths` accepts files, directories, and globs. Directories are walked recursively. `.gitignore` is respected by default, and you can add a `.scoutignore` for scout-specific exclusions.
+`paths` accepts files, directories, and globs. Directories are walked recursively unless bounded with `--max-depth`. `.gitignore` is respected by default, and you can add a `.scoutignore` for scout-specific exclusions.
+
+By default `scout` summarizes files. Use `--type dir` to summarize directories from their child file summaries:
+
+```sh
+scout docs --type dir --max-depth 2
+```
 
 ### Output formats
 
@@ -112,8 +120,8 @@ scout docs --format json
 
 ```json
 [
-  { "path": "docs/qmd.md", "name": "qmd", "description": "Search and navigate indexed markdown collections via the qmd CLI." },
-  { "path": "docs/gh.md",  "name": "gh",  "description": "GitHub CLI for repos, PRs, CI checks, and settings. Does NOT cover issues or projects." }
+  { "type": "file", "path": "docs/qmd.md", "name": "qmd", "description": "Search and navigate indexed markdown collections via the qmd CLI." },
+  { "type": "file", "path": "docs/gh.md",  "name": "gh",  "description": "GitHub CLI for repos, PRs, CI checks, and settings. Does NOT cover issues or projects." }
 ]
 ```
 
@@ -153,9 +161,9 @@ This makes `scout --write` safe to run in a pre-commit hook or CI job: the manag
 
 ## How it works
 
-1. **Discover** — resolve paths/globs, walk directories, apply `.gitignore` and `.scoutignore`.
+1. **Discover** — resolve paths/globs, walk directories, apply `.gitignore` and `.scoutignore`, and select file or directory entries.
 2. **Read** — load each file up to `--max-bytes` (large files are truncated at a token-safe boundary; scout summarizes the head, which carries the intent for most docs).
-3. **Summarize** — send each file to a headless local CLI agent with a prompt tuned to produce a single dense description in the agentskills.io style: what the file is for, and explicit boundaries (the "Does NOT cover…" pattern) so an agent doesn't over-trust a file's scope.
+3. **Summarize** — send each file to a headless local CLI agent with a prompt tuned to produce a single dense description in the agentskills.io style; directory entries are summarized from child file summaries.
 4. **Cache** — keyed on a hash of file content + provider + model + provider command + prompt version. Unchanged files are never re-summarized, so re-runs are fast and nearly free. This is what makes scout cheap enough to wire into CI.
 5. **Emit** — render in the requested format, optionally into a managed block in a target file.
 
@@ -168,6 +176,8 @@ Flags win over environment variables, which win over a project `scout.toml` in t
 ```toml
 # ~/.config/scout.toml
 provider    = "codex"
+type        = "file"
+max_depth   = 0
 concurrency = 2
 max_bytes   = 16384
 
@@ -261,7 +271,6 @@ Scout is complementary to all of these. It's the layer that decides *whether* yo
 ## Roadmap
 
 - [ ] Additional built-in CLI providers (OpenAI Codex variants, local via Ollama)
-- [ ] `--depth` to summarize directories as well as files (rolled-up tree descriptions)
 - [ ] Incremental `--watch` mode
 - [ ] Custom prompt/description templates per project
 - [ ] MCP server mode so agents can call `scout` directly as a tool

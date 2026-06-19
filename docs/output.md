@@ -26,6 +26,7 @@ scout docs --format json
 ```json
 [
   {
+    "type": "file",
     "path": "docs/config.md",
     "name": "config",
     "description": "Documents scout configuration precedence, provider commands, env vars, and cache behavior."
@@ -34,6 +35,8 @@ scout docs --format json
 ```
 
 Use `json` when another tool needs structured records.
+
+The `type` field is either `file` or `dir`.
 
 ## Skill
 

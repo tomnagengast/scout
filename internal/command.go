@@ -51,6 +51,8 @@ func bindConfigFlags(cmd *cobra.Command, cfg *Config) {
 	flags := cmd.Flags()
 	flags.StringVarP(&cfg.Format, "format", "f", cfg.Format, "output format: list, skill, json")
 	flags.StringVarP(&cfg.Write, "write", "w", cfg.Write, "write the index into a file")
+	flags.StringVar(&cfg.Type, "type", cfg.Type, "entry type to summarize: file or dir")
+	flags.IntVar(&cfg.MaxDepth, "max-depth", cfg.MaxDepth, "maximum directory depth to walk, 0 for unlimited")
 	flags.StringVar(&cfg.Provider, "provider", cfg.Provider, "summarizer provider: codex, claude, or a configured provider")
 	flags.StringVarP(&cfg.Model, "model", "m", cfg.Model, "model passed to the summarizer provider")
 	flags.IntVarP(&cfg.Concurrency, "concurrency", "c", cfg.Concurrency, "files summarized in parallel")
@@ -64,6 +66,8 @@ func changedConfigFlags(cmd *cobra.Command) map[string]bool {
 	names := []string{
 		"format",
 		"write",
+		"type",
+		"max-depth",
 		"provider",
 		"model",
 		"concurrency",

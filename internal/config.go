@@ -18,6 +18,7 @@ const (
 func defaultConfig() Config {
 	return Config{
 		Format:      "list",
+		Type:        entryTypeFile,
 		Provider:    defaultProvider,
 		Concurrency: defaultConcurrency,
 		MaxBytes:    defaultMaxBytes,
@@ -49,8 +50,14 @@ func loadConfig(flagCfg Config, changed map[string]bool) (Config, error) {
 	if cfg.MaxBytes < 1 {
 		return cfg, errors.New("max-bytes must be at least 1")
 	}
+	if cfg.MaxDepth < 0 {
+		return cfg, errors.New("max-depth must be at least 0")
+	}
 	if cfg.Format != "list" && cfg.Format != "skill" && cfg.Format != "json" {
 		return cfg, fmt.Errorf("unsupported format %q", cfg.Format)
+	}
+	if cfg.Type != entryTypeFile && cfg.Type != entryTypeDir {
+		return cfg, fmt.Errorf("unsupported type %q", cfg.Type)
 	}
 	return cfg, nil
 }
@@ -61,6 +68,12 @@ func applyChangedFlags(cfg *Config, flagCfg Config, changed map[string]bool) {
 	}
 	if changed["write"] {
 		cfg.Write = flagCfg.Write
+	}
+	if changed["type"] {
+		cfg.Type = flagCfg.Type
+	}
+	if changed["max-depth"] {
+		cfg.MaxDepth = flagCfg.MaxDepth
 	}
 	if changed["provider"] {
 		cfg.Provider = flagCfg.Provider

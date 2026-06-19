@@ -18,6 +18,20 @@ func (fakeSummarizer) Summarize(_ context.Context, path, content string, truncat
 	return "Summarizes " + path + " with " + strings.TrimSpace(content) + suffix + ".", nil
 }
 
+func (fakeSummarizer) SummarizeDir(_ context.Context, path, content string) (string, error) {
+	return "Summarizes directory " + path + " with " + strings.TrimSpace(content) + ".", nil
+}
+
+type rollupSummarizer struct{}
+
+func (rollupSummarizer) Summarize(_ context.Context, path, _ string, _ bool) (string, error) {
+	return "summary for " + path + ".", nil
+}
+
+func (rollupSummarizer) SummarizeDir(_ context.Context, path, content string) (string, error) {
+	return "directory " + path + " has " + strings.TrimSpace(content) + ".", nil
+}
+
 type failingSummarizer struct{}
 
 func (failingSummarizer) Summarize(context.Context, string, string, bool) (string, error) {

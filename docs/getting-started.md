@@ -28,6 +28,14 @@ README.md  Describes scout, its install flow, CLI flags, output formats, configu
 
 Real summaries require a configured headless CLI provider. By default, `scout` uses `codex exec`. Use `--provider claude` to use the built-in Claude Code provider.
 
+Summarize directories instead of files when you want a higher-level map:
+
+```sh
+./scout docs --type dir --max-depth 2
+```
+
+Directory summaries are based on child file summaries. Pass a directory path for `--type dir`; shell-expanded file globs such as `**/*.md` match files, not directories.
+
 ## Choose An Output Format
 
 Use JSON when another tool or agent will parse the result:

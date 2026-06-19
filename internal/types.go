@@ -3,6 +3,8 @@ package scout
 type Config struct {
 	Format      string                       `toml:"format"`
 	Write       string                       `toml:"write"`
+	Type        string                       `toml:"type"`
+	MaxDepth    int                          `toml:"max_depth"`
 	Provider    string                       `toml:"provider"`
 	Model       string                       `toml:"model"`
 	Concurrency int                          `toml:"concurrency"`
@@ -20,7 +22,13 @@ type CLIProviderConfig struct {
 	ModelArg string   `toml:"model_arg"`
 }
 
+const (
+	entryTypeFile = "file"
+	entryTypeDir  = "dir"
+)
+
 type Entry struct {
+	Type        string `json:"type"`
 	Path        string `json:"path"`
 	Name        string `json:"name"`
 	Description string `json:"description"`

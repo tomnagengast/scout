@@ -2,7 +2,7 @@ package scout
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"io"
 )
 
@@ -11,19 +11,19 @@ func run(ctx context.Context, cfg Config, paths []string, stdout, stderr io.Writ
 		paths = []string{"."}
 	}
 
-	files, err := discoverFiles(paths, cfg.Ignore)
+	targets, err := discoverTargets(paths, cfg.Ignore, cfg.Type, cfg.MaxDepth)
 	if err != nil {
 		return err
 	}
-	if len(files) == 0 {
-		return errors.New("no files matched")
+	if len(targets) == 0 {
+		return fmt.Errorf("no %ss matched", cfg.Type)
 	}
 
 	summarizer, err := newSummarizer(cfg)
 	if err != nil {
 		return err
 	}
-	entries, err := summarizeFiles(ctx, files, cfg, summarizer, stderr)
+	entries, err := summarizeTargets(ctx, targets, cfg, summarizer, stderr)
 	if err != nil {
 		return err
 	}

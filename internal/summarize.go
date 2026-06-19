@@ -5,23 +5,43 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"unicode/utf8"
 )
 
-const promptVersion = "v1"
+const (
+	promptVersion    = "v1"
+	dirPromptVersion = "dir-v1"
+)
 
 type Summarizer interface {
 	Summarize(ctx context.Context, path, content string, truncated bool) (string, error)
 }
 
+type DirSummarizer interface {
+	SummarizeDir(ctx context.Context, path, content string) (string, error)
+}
+
 type cacheRecord struct {
 	Description string `json:"description"`
+}
+
+func summarizeTargets(ctx context.Context, targets []discoveredTarget, cfg Config, summarizer Summarizer, stderr io.Writer) ([]Entry, error) {
+	paths := make([]string, 0, len(targets))
+	for _, target := range targets {
+		paths = append(paths, target.Path)
+	}
+	if cfg.Type == entryTypeDir {
+		return summarizeDirs(ctx, paths, cfg, summarizer, stderr)
+	}
+	return summarizeFiles(ctx, paths, cfg, summarizer, stderr)
 }
 
 func summarizeFiles(ctx context.Context, files []string, cfg Config, summarizer Summarizer, stderr io.Writer) ([]Entry, error) {
@@ -119,7 +139,7 @@ func summarizeFile(ctx context.Context, path string, cfg Config, summarizer Summ
 	key := cacheKey(path, content, cfg)
 	if !cfg.NoCache {
 		if description, ok := readCache(cfg.CacheDir, key); ok {
-			return Entry{Path: path, Name: entryName(path), Description: description}, nil
+			return newEntry(entryTypeFile, path, description), nil
 		}
 	}
 	description, err := summarizer.Summarize(ctx, path, content, truncated)
@@ -133,7 +153,95 @@ func summarizeFile(ctx context.Context, path string, cfg Config, summarizer Summ
 	if !cfg.NoCache {
 		_ = writeCache(cfg.CacheDir, key, description)
 	}
-	return Entry{Path: path, Name: entryName(path), Description: description}, nil
+	return newEntry(entryTypeFile, path, description), nil
+}
+
+func summarizeDirs(ctx context.Context, dirs []string, cfg Config, summarizer Summarizer, stderr io.Writer) ([]Entry, error) {
+	filesByDir := map[string][]string{}
+	seenFiles := map[string]bool{}
+	var files []string
+	for _, dir := range dirs {
+		dirFiles, err := discoverFiles([]string{dir}, cfg.Ignore)
+		if err != nil {
+			return nil, err
+		}
+		filesByDir[dir] = dirFiles
+		for _, file := range dirFiles {
+			if !seenFiles[file] {
+				seenFiles[file] = true
+				files = append(files, file)
+			}
+		}
+	}
+	sort.Strings(files)
+
+	fileEntriesByPath := map[string]Entry{}
+	if len(files) > 0 {
+		fileEntries, err := summarizeFiles(ctx, files, cfg, summarizer, stderr)
+		if err != nil {
+			return nil, err
+		}
+		for _, entry := range fileEntries {
+			fileEntriesByPath[entry.Path] = entry
+		}
+	}
+
+	entries := make([]Entry, 0, len(dirs))
+	for i, dir := range dirs {
+		childEntries := make([]Entry, 0, len(filesByDir[dir]))
+		for _, file := range filesByDir[dir] {
+			childEntries = append(childEntries, fileEntriesByPath[file])
+		}
+		entry, err := summarizeDir(ctx, dir, childEntries, cfg, summarizer)
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, entry)
+		if !cfg.Quiet {
+			fmt.Fprintf(stderr, "summarized dirs %d/%d\r", i+1, len(dirs))
+		}
+	}
+	if !cfg.Quiet {
+		fmt.Fprintln(stderr)
+	}
+	return entries, nil
+}
+
+func summarizeDir(ctx context.Context, path string, childEntries []Entry, cfg Config, summarizer Summarizer) (Entry, error) {
+	content := directoryRollupContent(childEntries)
+	if content == "" {
+		return newEntry(entryTypeDir, path, "Contains no matched files."), nil
+	}
+	key := dirCacheKey(path, content, cfg)
+	if !cfg.NoCache {
+		if description, ok := readCache(cfg.CacheDir, key); ok {
+			return newEntry(entryTypeDir, path, description), nil
+		}
+	}
+	dirSummarizer, ok := summarizer.(DirSummarizer)
+	if !ok {
+		return Entry{}, errors.New("summarizer does not support directory summaries")
+	}
+	description, err := dirSummarizer.SummarizeDir(ctx, path, content)
+	if err != nil {
+		return Entry{}, err
+	}
+	description = cleanDescription(description)
+	if description == "" {
+		return Entry{}, fmt.Errorf("%s: model returned empty description", path)
+	}
+	if !cfg.NoCache {
+		_ = writeCache(cfg.CacheDir, key, description)
+	}
+	return newEntry(entryTypeDir, path, description), nil
+}
+
+func directoryRollupContent(entries []Entry) string {
+	var b strings.Builder
+	for _, entry := range entries {
+		fmt.Fprintf(&b, "%s\t%s\n", entry.Path, entry.Description)
+	}
+	return strings.TrimRight(b.String(), "\n")
 }
 
 func readFileHead(path string, maxBytes int) (string, bool, error) {
@@ -162,9 +270,17 @@ func utf8Valid(data []byte) bool {
 }
 
 func cacheKey(path, content string, cfg Config) string {
+	return cacheKeyWithVersion(promptVersion, path, content, cfg)
+}
+
+func dirCacheKey(path, content string, cfg Config) string {
+	return cacheKeyWithVersion(dirPromptVersion, path, content, cfg)
+}
+
+func cacheKeyWithVersion(version, path, content string, cfg Config) string {
 	providerConfig, _ := providerConfigFor(cfg, cfg.Provider)
 	fingerprint := strings.Join([]string{
-		promptVersion,
+		version,
 		cfg.Provider,
 		cfg.Model,
 		providerConfig.Command,
@@ -200,8 +316,20 @@ func writeCache(cacheDir, key, description string) error {
 	return os.WriteFile(filepath.Join(cacheDir, key+".json"), data, 0o644)
 }
 
-func entryName(path string) string {
+func newEntry(entryType, path, description string) Entry {
+	return Entry{
+		Type:        entryType,
+		Path:        path,
+		Name:        entryName(entryType, path),
+		Description: description,
+	}
+}
+
+func entryName(entryType, path string) string {
 	base := filepath.Base(path)
+	if entryType == entryTypeDir {
+		return base
+	}
 	ext := filepath.Ext(base)
 	return strings.TrimSuffix(base, ext)
 }

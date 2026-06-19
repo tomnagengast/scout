@@ -43,6 +43,41 @@ func TestExecuteUsesCobraRootCommand(t *testing.T) {
 	}
 }
 
+func TestExecuteSummarizesDirectories(t *testing.T) {
+	dir := t.TempDir()
+	oldwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldwd) })
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	mustWrite(t, "docs/a.md", "hello")
+	mustWrite(t, "docs/nested/b.md", "world")
+
+	configHome := filepath.Join(dir, "config")
+	t.Setenv("XDG_CONFIG_HOME", configHome)
+	mustWrite(t, filepath.Join(configHome, "scout.toml"), strings.Join([]string{
+		`provider = "fake"`,
+		`[providers.fake]`,
+		`command = "sh"`,
+		`args = ["-c", "cat >/dev/null; printf Fake-summary."]`,
+	}, "\n"))
+
+	var stdout, stderr bytes.Buffer
+	err = Execute(context.Background(), []string{"--quiet", "--no-cache", "--type", "dir", "--max-depth", "1", "docs"}, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("execute failed: %v\nstderr:\n%s", err, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "docs         Fake-summary.") || !strings.Contains(stdout.String(), "docs/nested  Fake-summary.") {
+		t.Fatalf("stdout mismatch:\n%s", stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected empty stderr, got:\n%s", stderr.String())
+	}
+}
+
 func TestExecuteHelpDoesNotReturnError(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	err := Execute(context.Background(), []string{"--help"}, &stdout, &stderr)

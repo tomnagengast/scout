@@ -16,6 +16,8 @@ Configuration is applied in this order:
 
 ```toml
 provider    = "codex"
+type        = "file"
+max_depth   = 0
 concurrency = 2
 max_bytes   = 16384
 
@@ -59,6 +61,10 @@ The built-in `codex` provider ignores Codex user config and project rules by def
 
 `model` is passed to the provider only when set. It expands through `{model_args}`.
 
+`type` selects what `scout` emits. Use `file` for one entry per file, or `dir` for directory rollups based on child file summaries.
+
+`max_depth` limits directory walking below each input directory. The default `0` means unlimited.
+
 `concurrency` controls how many files are summarized at once. The default is `2` because each worker starts a local CLI agent process.
 
 `max_bytes` limits how many bytes of each file are read before summarization. Large files are summarized from the head only.
@@ -89,4 +95,4 @@ If `{prompt}` is not used, `scout` writes the prompt to stdin. If `{output}` is 
 
 ## Cache
 
-Cache keys include the prompt version, provider, model, provider command, provider args, file path, and file content head. Use `--no-cache` to force fresh summaries.
+Cache keys include the prompt version, provider, model, provider command, provider args, path, and summary input content. Use `--no-cache` to force fresh summaries.

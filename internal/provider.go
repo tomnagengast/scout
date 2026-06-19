@@ -88,7 +88,14 @@ func providerConfigFor(cfg Config, provider string) (CLIProviderConfig, error) {
 }
 
 func (s *cliSummarizer) Summarize(ctx context.Context, path, content string, truncated bool) (string, error) {
-	prompt := summaryPrompt(path, content, truncated)
+	return s.runPrompt(ctx, summaryPrompt(path, content, truncated))
+}
+
+func (s *cliSummarizer) SummarizeDir(ctx context.Context, path, content string) (string, error) {
+	return s.runPrompt(ctx, dirSummaryPrompt(path, content))
+}
+
+func (s *cliSummarizer) runPrompt(ctx context.Context, prompt string) (string, error) {
 	outputPath, cleanup, err := tempOutputPath()
 	if err != nil {
 		return "", err
@@ -133,6 +140,18 @@ Path: %s%s
 
 File content:
 %s`, path, truncatedNote, content)
+}
+
+func dirSummaryPrompt(path, content string) string {
+	return fmt.Sprintf(`Write one dense, action-oriented directory description for an AI agent building a progressive-disclosure map.
+
+Describe what this directory covers based on its child file summaries. Mention explicit exclusions only when the child summaries make them clear.
+Return exactly one sentence, no markdown, no path prefix, no quotes.
+
+Directory: %s
+
+Child file summaries:
+%s`, path, content)
 }
 
 type expandedArgsOptions struct {

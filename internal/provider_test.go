@@ -27,6 +27,23 @@ func TestExpandProviderArgs(t *testing.T) {
 	}
 }
 
+func TestDefaultCodexProviderIsolatedForSummaries(t *testing.T) {
+	provider, err := providerConfigFor(defaultConfig(), "codex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := strings.Join(provider.Args, "\x00")
+	for _, want := range []string{
+		"--ignore-user-config",
+		"--ignore-rules",
+		`model_reasoning_effort="none"`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("default codex args missing %q: %q", want, got)
+		}
+	}
+}
+
 func TestCLISummarizerReadsStdout(t *testing.T) {
 	summarizer := &cliSummarizer{
 		provider: "test",

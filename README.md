@@ -175,8 +175,11 @@ args = [
   "exec",
   "--ephemeral",
   "--skip-git-repo-check",
+  "--ignore-user-config",
+  "--ignore-rules",
   "--sandbox", "read-only",
   "--color", "never",
+  "-c", "model_reasoning_effort=\"none\"",
   "--output-last-message", "{output}",
   "{model_args}",
   "-"
@@ -199,7 +202,7 @@ model_arg = "--model"
 ignore = ["**/CHANGELOG.md", "**/vendor/**"]
 ```
 
-The built-in `codex` and `claude` providers use those command shapes automatically; you only need to add provider blocks when you want to point at a wrapper, change flags, or define a new provider name. `--provider claude` overrides the configured provider for one run.
+The built-in `codex` provider intentionally ignores Codex user config and project rules so summaries do not inherit interactive-agent settings like high reasoning effort, MCP servers, hooks, or custom sandbox defaults. Add a `[providers.codex]` block if you want Scout to inherit or customize that behavior. The built-in `codex` and `claude` providers use those command shapes automatically; you only need to add provider blocks when you want to point at a wrapper, change flags, or define a new provider name. `--provider claude` overrides the configured provider for one run.
 
 Provider arg placeholders:
 

@@ -12,7 +12,7 @@ Discovery lives in `internal/discover.go`. It resolves files, directories, and g
 
 Summarization lives in `internal/summarize.go`. It reads at most `max_bytes` from each file, trims incomplete UTF-8 at the boundary, checks the cache, and runs summaries concurrently.
 
-Provider execution lives in `internal/provider.go`. Built-in providers shell out to `codex` or `claude`; custom providers can be configured in TOML. Providers receive the summarization prompt on stdin unless `{prompt}` is used in args.
+Provider execution lives in `internal/provider.go`. Built-in providers shell out to `codex` or `claude`; custom providers can be configured in TOML. The built-in Codex provider isolates the subprocess from Codex user config and project rules so summary generation stays lightweight. Providers receive the summarization prompt on stdin unless `{prompt}` is used in args.
 
 Rendering lives in `internal/render.go`. Managed writes live in `internal/write.go`.
 

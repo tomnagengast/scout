@@ -25,8 +25,11 @@ args = [
   "exec",
   "--ephemeral",
   "--skip-git-repo-check",
+  "--ignore-user-config",
+  "--ignore-rules",
   "--sandbox", "read-only",
   "--color", "never",
+  "-c", "model_reasoning_effort=\"none\"",
   "--output-last-message", "{output}",
   "{model_args}",
   "-"
@@ -51,6 +54,8 @@ ignore = ["**/CHANGELOG.md", "**/vendor/**"]
 ## Fields
 
 `provider` selects the summarizer provider. Built-in providers are `codex` and `claude`. Custom provider names are allowed when a matching `[providers.<name>]` table exists.
+
+The built-in `codex` provider ignores Codex user config and project rules by default. This keeps Scout summaries from inheriting interactive-agent settings such as high reasoning effort, hooks, MCP servers, or custom sandbox defaults. Override `[providers.codex]` if you want a different invocation.
 
 `model` is passed to the provider only when set. It expands through `{model_args}`.
 

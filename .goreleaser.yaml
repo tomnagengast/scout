@@ -16,9 +16,7 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/tomnagengast/scout/internal/version.Version={{ .Version }}
-      - -X github.com/tomnagengast/scout/internal/version.Commit={{ .ShortCommit }}
-      - -X github.com/tomnagengast/scout/internal/version.Date={{ .Date }}
+      - -X github.com/tomnagengast/scout/internal/version.Version=v{{ .Version }}
 
 archives:
   - id: scout

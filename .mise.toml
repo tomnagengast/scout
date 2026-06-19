@@ -1,5 +1,9 @@
 [tools]
 go = "1.26.3"
+goreleaser = "latest"
+gh = "latest"
+direnv = "latest"
+worktrunk = "latest"
 
 [tasks.fmt]
 description = "Format Go source"
@@ -44,3 +48,30 @@ echo "Installed: ${HOME}/.local/bin/scout"
 [tasks.tidy]
 description = "Tidy Go modules"
 run = "go mod tidy"
+
+[tasks.release-check]
+description = "Run local checks for a tagged GoReleaser/Homebrew release"
+depends = ["test", "build"]
+run = "goreleaser check"
+
+[tasks.doctor]
+description = "Check repo toolchain and agent helper CLIs"
+run = '''
+missing=0
+for tool in mise direnv wt gh goreleaser; do
+  if command -v "${tool}" >/dev/null 2>&1; then
+    printf "%-12s %s\n" "${tool}" "$(command -v "${tool}")"
+  else
+    printf "%-12s missing\n" "${tool}"
+    missing=1
+  fi
+done
+
+if command -v memoryd >/dev/null 2>&1; then
+  printf "%-12s %s\n" "memoryd" "$(command -v memoryd)"
+else
+  printf "%-12s optional; unavailable for durable agent memory in this shell\n" "memoryd"
+fi
+
+exit "${missing}"
+'''

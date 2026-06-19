@@ -41,7 +41,7 @@ release:
     name: scout
 
 homebrew_casks:
-  - name: scout
+  - name: scout-cli
     ids:
       - scout
     binaries:

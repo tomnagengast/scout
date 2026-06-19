@@ -41,5 +41,5 @@ GoReleaser publishes a Homebrew cask. Install the latest release with:
 
 ```sh
 brew tap tomnagengast/tap
-brew install --cask scout
+brew install --cask tomnagengast/tap/scout-cli
 ```

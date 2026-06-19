@@ -2,7 +2,7 @@
 
 `scout` is intended to stay small, local-first, and easy to reason about.
 
-## Development Loop
+## Development loop
 
 Install tools:
 
@@ -33,7 +33,7 @@ go test ./...
 go build -o scout ./cmd
 ```
 
-## Project Shape
+## Project shape
 
 The binary entrypoint lives in `cmd/main.go`.
 
@@ -47,7 +47,7 @@ Update `README.md` and the relevant file in `docs/` when changing commands, conf
 
 Docs should describe current behavior plainly. If something is a future direction, mark it as such or leave it out.
 
-## Design Principles
+## Design principles
 
 Keep the index cheap to read and cheap to regenerate.
 

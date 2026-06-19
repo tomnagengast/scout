@@ -2,7 +2,7 @@
 
 `scout` is distributed as a single Go binary. The repository uses `mise` to pin the Go toolchain and expose common development tasks.
 
-## System Requirements
+## System requirements
 
 | Requirement           | Notes                                                                   |
 | --------------------- | ----------------------------------------------------------------------- |
@@ -25,7 +25,7 @@ brew uninstall --cask tomnagengast/tap/scout
 brew install --cask tomnagengast/tap/scout-cli
 ```
 
-## Build From Source
+## Build from source
 
 Install project tools and build the binary:
 
@@ -52,7 +52,7 @@ go build -o scout ./cmd
 
 Tagged releases are built by GoReleaser and published as GitHub release archives plus a Homebrew cask. See [release.md](./release.md) for the release workflow.
 
-## Install Locally
+## Install locally
 
 Install to `~/.local/bin/scout`:
 
@@ -66,7 +66,7 @@ Make sure `~/.local/bin` is on your `PATH`, then verify:
 scout --version
 ```
 
-## Summarizer Setup
+## Summarizer setup
 
 The default provider shells out to `codex exec`. Authenticate Codex before running a real summary:
 

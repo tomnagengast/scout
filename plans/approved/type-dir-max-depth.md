@@ -1,9 +1,10 @@
 # Plan: `--type dir --max-depth`
 > updated: 2026-06-18T17:32:27-07:00
+> status: shipped - `--type` and `--max-depth` are in the CLI; kept as a decision record.
 
 ## Research
 
-Current flow is file-only:
+Pre-implementation, the flow was file-only:
 
 - `internal/command.go`: Cobra binds config-backed flags.
 - `internal/config.go`: defaults/config/env/changed flags merge, validates format/concurrency/max-bytes.
@@ -11,8 +12,8 @@ Current flow is file-only:
 - `internal/run.go`: defaults paths to `.`, discovers files, summarizes files, renders entries, writes optional managed block.
 - `internal/summarize.go`: `Summarizer` accepts `(path, content, truncated)`, cache key includes path/content/provider/model/prompt version.
 - `internal/types.go`: `Entry` has only `path`, `name`, `description`; no entry kind.
-- `docs/architecture.md`: explicitly says directory rollups are roadmap.
-- `README.md`: roadmap currently says `--depth`; docs need update to `--type dir --max-depth`.
+- `docs/architecture.md`: at the time, explicitly said directory rollups were roadmap.
+- `README.md`: roadmap then said `--depth`; docs needed updating to `--type dir --max-depth`.
 
 ## Decisions
 
@@ -83,7 +84,7 @@ Current flow is file-only:
    - Smoke: fake provider dir mode emits expected directory path.
    - Remove local `./scout` build artifact.
 
-## Unresolved Questions
+## Unresolved questions
 
 - Should `--type dir` include the root input directory itself? Recommendation: yes.
 - Should `--max-depth 0` mean unlimited or root-only? Recommendation: unlimited, matching common CLI convention for unset numeric config.

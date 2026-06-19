@@ -27,13 +27,13 @@ Rendering lives in `internal/render.go`. Managed writes live in `internal/write.
 7. Render `list`, `json`, or `skill`.
 8. Print to stdout or update a managed region with `--write`.
 
-## Cache Flow
+## Cache flow
 
 The cache is rebuildable derived data. A cache record stores only the generated description. File keys include file content, path, provider, provider command, provider args, model, and prompt version. Directory keys use the directory rollup content and a directory prompt version.
 
 Changing provider configuration intentionally invalidates old summaries, because different agents or flags may produce different descriptions.
 
-## Current Boundaries
+## Current boundaries
 
 `scout` reads the head of each file, not the full file, after `max_bytes`.
 

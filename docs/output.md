@@ -54,7 +54,7 @@ description: GitHub CLI for repos, PRs, CI checks, and settings.
 
 Use `skill` when generating frontmatter-shaped descriptions for skill or capability documents.
 
-## Managed Writes
+## Managed writes
 
 For `list` and `json`, `--write` updates a managed block in the target file:
 

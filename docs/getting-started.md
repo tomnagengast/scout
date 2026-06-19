@@ -1,4 +1,4 @@
-# Getting Started
+# Getting started
 
 This guide walks through a local source build and the first `scout` runs.
 
@@ -10,7 +10,7 @@ mise run build
 ./scout --help
 ```
 
-## Run The First Index
+## Run the first index
 
 Point `scout` at one or more files, directories, or globs:
 
@@ -36,7 +36,7 @@ Summarize directories instead of files when you want a higher-level map:
 
 Directory summaries are based on child file summaries. Pass a directory path for `--type dir`; shell-expanded file globs such as `**/*.md` match files, not directories.
 
-## Choose An Output Format
+## Choose an output format
 
 Use JSON when another tool or agent will parse the result:
 
@@ -52,7 +52,7 @@ Use skill frontmatter when indexing capability documents:
 
 See [output.md](./output.md) for exact output shapes.
 
-## Write A Managed Index
+## Write a managed index
 
 Append or refresh a managed block in a file:
 
@@ -73,7 +73,7 @@ For `--format skill`, `--write` updates the leading frontmatter for exactly one 
 ./scout docs/gh.md --format skill --write docs/gh.md
 ```
 
-## Common Development Commands
+## Common development commands
 
 ```sh
 mise run fmt

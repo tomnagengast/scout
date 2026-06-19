@@ -73,7 +73,7 @@ The built-in `codex` provider ignores Codex user config and project rules by def
 
 `ignore` adds scout-specific ignore globs on top of `.gitignore` and `.scoutignore`.
 
-## Environment Variables
+## Environment variables
 
 | Variable          | Description                              |
 | ----------------- | ---------------------------------------- |
@@ -81,7 +81,7 @@ The built-in `codex` provider ignores Codex user config and project rules by def
 | `SCOUT_MODEL`     | Model passed to the summarizer provider. |
 | `SCOUT_CACHE_DIR` | Override the cache directory.            |
 
-## Provider Args
+## Provider args
 
 Provider `args` are passed directly to the configured command after placeholder expansion.
 

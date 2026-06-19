@@ -1,23 +1,15 @@
 # scout
 
-**Reconnaissance for your context window.** `scout` walks a tree of documents and emits a thin, machine-readable description layer — one tight summary per file — so an agent can survey what's there and load only what it needs.
+**Reconnaissance for your context window.** `scout` walks a tree of documents and emits a thin, machine-readable description layer, one tight summary per file, so an agent can survey what's there and load only what it needs.
 
 [![Status](https://img.shields.io/badge/status-alpha-orange.svg)](#roadmap)
 [![CI](https://github.com/tomnagengast/scout/actions/workflows/ci.yml/badge.svg)](https://github.com/tomnagengast/scout/actions/workflows/ci.yml)
 
 ---
 
-## Why scout
-
-Most "feed my repo to an LLM" tools — `repomix`, `gitingest`, `code2prompt` — pack everything into one giant blob and hand it to the model. That's fine for a one-shot question, but it's the wrong primitive for an agent that runs in a loop on a token budget. Dumping 200KB of docs into context to answer a question that needed one file is slow, expensive, and noisy.
-
-`scout` does the opposite. It produces the *cheap map you read first*: a list of files, each with a one-line description of what it is and what it covers. The agent reads the map (a few hundred tokens), decides which files are actually relevant, and pulls only those into the window. This is **progressive disclosure** — the same pattern that `SKILL.md` frontmatter and [agentskills.io](https://agentskills.io) use to keep capability descriptions in front of an agent without loading every implementation detail.
-
-Scout ahead. Then load deliberately.
-
 ## What it does
 
-Point `scout` at a path or glob. For each matched document it generates an action-oriented description — what the file is for, and where its boundaries are — and prints an index. Output is designed to be consumed by an agent (or piped into a file an agent reads), not admired by a human.
+Point `scout` at a path or glob. For each matched document it writes a one-line description of what the file is for and where its boundaries are, then prints an index. The output is meant to be read by an agent, or written into a file an agent reads.
 
 ```sh
 cd path/to/repo/
@@ -47,7 +39,8 @@ brew tap tomnagengast/tap
 brew install --cask tomnagengast/tap/scout-cli
 ```
 
-**From source**
+<details>
+<summary><strong>From source</strong></summary>
 
 ```sh
 git clone https://github.com/tomnagengast/scout
@@ -55,6 +48,8 @@ cd scout
 mise install
 mise run build
 ```
+
+</details>
 
 Scout generates summaries by shelling out to a headless CLI agent already installed on your machine. By default it uses `codex exec`; `claude -p` is also supported when Claude Code is installed.
 
@@ -92,9 +87,9 @@ scout docs --type dir --max-depth 2
 
 ### Output formats
 
-**`list`** (default) — one line per file: relative path + description. Compact, greppable, ideal for dropping straight into an agent's context.
+**`list`** (default) - one line per file: relative path + description. Compact, greppable, ideal for dropping straight into an agent's context.
 
-**`skill`** — emits standard frontmatter blocks in the `SKILL.md` / agentskills.io convention, so the output can seed a skills index or a capability manifest:
+**`skill`** - emits standard frontmatter blocks in the `SKILL.md` / agentskills.io convention, so the output can seed a skills index or a capability manifest:
 
 ```sh
 scout docs --format skill
@@ -114,7 +109,7 @@ description: GitHub CLI for repos, PRs, CI checks, and settings. Does NOT cover 
 ---
 ```
 
-**`json`** — structured output for programmatic consumers. Agents that call `scout` as a tool should prefer this:
+**`json`** - structured output for programmatic consumers. Agents that call `scout` as a tool should prefer this:
 
 ```sh
 scout docs --format json
@@ -139,12 +134,12 @@ By default scout **appends** the index inside a managed block at the bottom of t
 
 ```md
 <!-- scout:start -->
-- docs/gh.md  — GitHub CLI for repos, PRs, CI checks, and settings. Does NOT cover issues or projects.
-- docs/qmd.md — Search and navigate indexed markdown collections via the qmd CLI.
+- docs/gh.md  GitHub CLI for repos, PRs, CI checks, and settings. Does NOT cover issues or projects.
+- docs/qmd.md  Search and navigate indexed markdown collections via the qmd CLI.
 <!-- scout:end -->
 ```
 
-With `--format skill`, scout **prepends** instead, refreshing the leading frontmatter block — because frontmatter is only valid at the very top of a file:
+With `--format skill`, scout **prepends** instead, refreshing the leading frontmatter block, because frontmatter is only valid at the very top of a file:
 
 ```sh
 scout docs/gh.md --format skill --write docs/gh.md
@@ -161,13 +156,21 @@ description: GitHub CLI for repos, PRs, CI checks, and settings. Does NOT cover 
 
 This makes `scout --write` safe to run in a pre-commit hook or CI job: the managed region (or frontmatter) is the only thing that changes.
 
+## Why scout
+
+Most "feed my repo to an LLM" tools (`repomix`, `gitingest`, `code2prompt`) pack everything into one giant blob and hand it to the model. That's fine for a one-shot question, but it's the wrong primitive for an agent that runs in a loop on a token budget. Dumping 200KB of docs into context to answer a question that needed one file is slow, expensive, and noisy.
+
+`scout` does the opposite. It produces a cheap map you read first: a list of files, each with a one-line description of what it is and what it covers. The agent reads the map (a few hundred tokens), decides which files are relevant, and pulls only those into the window. This is progressive disclosure, the same pattern `SKILL.md` frontmatter and [agentskills.io](https://agentskills.io) use to keep capability descriptions in front of an agent without loading every detail.
+
+Scout ahead. Then load deliberately.
+
 ## How it works
 
-1. **Discover** — resolve paths/globs, walk directories, apply `.gitignore` and `.scoutignore`, and select file or directory entries.
-2. **Read** — load each file up to `--max-bytes` (large files are truncated at a token-safe boundary; scout summarizes the head, which carries the intent for most docs).
-3. **Summarize** — send each file to a headless local CLI agent with a prompt tuned to produce a single dense description in the agentskills.io style; directory entries are summarized from child file summaries.
-4. **Cache** — keyed on a hash of file content + provider + model + provider command + prompt version. Unchanged files are never re-summarized, so re-runs are fast and nearly free. This is what makes scout cheap enough to wire into CI.
-5. **Emit** — render in the requested format, optionally into a managed block in a target file.
+1. **Discover** - resolve paths/globs, walk directories, apply `.gitignore` and `.scoutignore`, and select file or directory entries.
+2. **Read** - load each file up to `--max-bytes` (large files are truncated at a token-safe boundary; scout summarizes the head, which carries the intent for most docs).
+3. **Summarize** - send each file to a headless local CLI agent with a prompt tuned to produce a single dense description in the agentskills.io style; directory entries are summarized from child file summaries.
+4. **Cache** - keyed on a hash of file content + provider + model + provider command + prompt version. Unchanged files are never re-summarized, so re-runs are fast and nearly free. This is what makes scout cheap enough to wire into CI.
+5. **Emit** - render in the requested format, optionally into a managed block in a target file.
 
 Summaries are generated concurrently (`--concurrency`), and output ordering is stable regardless of completion order, so diffs stay clean. The default concurrency is intentionally conservative because each worker starts a local CLI agent process.
 
@@ -240,18 +243,20 @@ Provider arg placeholders:
 
 **Repo onboarding.** `scout docs --write README.md` gives a human (or a new agent) a navigable table of contents that updates itself.
 
-**CI freshness check.** Run `scout … --write` in CI and fail if the managed block changed — the same idempotency guarantee that keeps `go generate`-style artifacts in sync.
+**CI freshness check.** Run `scout … --write` in CI and fail if the managed block changed, the same idempotency guarantee that keeps `go generate`-style artifacts in sync.
 
 ## Docs
 
-- [Docs index](./docs/README.md)
-- [Install](./docs/install.md)
-- [Getting started](./docs/getting-started.md)
-- [Config](./docs/config.md)
-- [Output](./docs/output.md)
-- [Architecture](./docs/architecture.md)
-- [Release](./docs/release.md)
-- [Contributing](./docs/contributing.md)
+| Page | Purpose |
+| ---- | ------- |
+| [Docs index](./docs/README.md) | Where to start and how the guides fit together. |
+| [Install](./docs/install.md) | Build the binary, install locally, and verify the CLI. |
+| [Getting started](./docs/getting-started.md) | Run the first index, choose formats, write managed blocks, troubleshoot. |
+| [Config](./docs/config.md) | Precedence, provider config, env vars, and caching. |
+| [Output](./docs/output.md) | `list`, `json`, `skill`, and idempotent `--write`. |
+| [Architecture](./docs/architecture.md) | How discovery, summarization, caching, and writes flow. |
+| [Release](./docs/release.md) | Cut tagged releases and publish the Homebrew cask. |
+| [Contributing](./docs/contributing.md) | Run checks and work within repo conventions. |
 
 ## Compared to
 

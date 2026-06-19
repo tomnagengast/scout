@@ -14,7 +14,8 @@
 ## Homebrew
 
 ```sh
-brew install --cask tomnagengast/tap/scout
+brew tap tomnagengast/tap
+brew install --cask scout
 ```
 
 ## Build From Source

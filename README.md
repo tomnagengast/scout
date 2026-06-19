@@ -43,7 +43,8 @@ scout docs/**
 **Homebrew**
 
 ```sh
-brew install --cask tomnagengast/tap/scout
+brew tap tomnagengast/tap
+brew install --cask scout
 ```
 
 **From source**

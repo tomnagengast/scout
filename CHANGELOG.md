@@ -2,6 +2,11 @@
 
 All notable changes to `scout` are tracked here.
 
+## v0.1.5 - 2026-06-19
+
+- Fixes Homebrew release version output to print the clean semver tag, such as `scout v0.1.5`.
+- Preserves commit and build-date metadata for source-built binaries.
+
 ## v0.1.4 - 2026-06-19
 
 - Adds shared repo-quality scaffolding: issue templates, a pull request template, CODEOWNERS, release and license badges, and related-tool links.

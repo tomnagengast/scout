@@ -18,6 +18,13 @@ brew tap tomnagengast/tap
 brew install --cask tomnagengast/tap/scout-cli
 ```
 
+If you installed the pre-v0.1.2 cask token, migrate once:
+
+```sh
+brew uninstall --cask tomnagengast/tap/scout
+brew install --cask tomnagengast/tap/scout-cli
+```
+
 ## Build From Source
 
 Install project tools and build the binary:

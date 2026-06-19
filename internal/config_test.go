@@ -43,6 +43,73 @@ func TestLoadConfigReadsUserProviderAndFlagOverrides(t *testing.T) {
 	}
 }
 
+func TestLoadConfigPreservesPrecedenceForUnchangedAndChangedFlags(t *testing.T) {
+	dir := t.TempDir()
+	oldwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldwd) })
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	configHome := filepath.Join(dir, "config")
+	t.Setenv("XDG_CONFIG_HOME", configHome)
+	t.Setenv("SCOUT_PROVIDER", "env-provider")
+	t.Setenv("SCOUT_MODEL", "env-model")
+	t.Setenv("SCOUT_CACHE_DIR", "env-cache")
+	mustWrite(t, filepath.Join(configHome, "scout.toml"), strings.Join([]string{
+		`provider = "user-provider"`,
+		`model = "user-model"`,
+		`format = "skill"`,
+		`concurrency = 3`,
+		`quiet = true`,
+	}, "\n"))
+	mustWrite(t, "scout.toml", strings.Join([]string{
+		`provider = "project-provider"`,
+		`format = "json"`,
+		`max_bytes = 123`,
+		`no_cache = true`,
+	}, "\n"))
+
+	flagCfg := defaultConfig()
+	cmd := &cobra.Command{}
+	bindConfigFlags(cmd, &flagCfg)
+	if err := cmd.ParseFlags([]string{"--provider", "cli-provider", "--max-bytes", "456"}); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := loadConfig(flagCfg, changedConfigFlags(cmd))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Provider != "cli-provider" {
+		t.Fatalf("provider mismatch: %q", cfg.Provider)
+	}
+	if cfg.MaxBytes != 456 {
+		t.Fatalf("max bytes mismatch: %d", cfg.MaxBytes)
+	}
+	if cfg.Model != "env-model" {
+		t.Fatalf("model mismatch: %q", cfg.Model)
+	}
+	if cfg.CacheDir != "env-cache" {
+		t.Fatalf("cache dir mismatch: %q", cfg.CacheDir)
+	}
+	if cfg.Format != "json" {
+		t.Fatalf("format mismatch: %q", cfg.Format)
+	}
+	if cfg.Concurrency != 3 {
+		t.Fatalf("concurrency mismatch: %d", cfg.Concurrency)
+	}
+	if !cfg.NoCache {
+		t.Fatal("expected no-cache from project config")
+	}
+	if !cfg.Quiet {
+		t.Fatal("expected quiet from user config")
+	}
+}
+
 func TestLoadConfigReadsTypeAndMaxDepthFlags(t *testing.T) {
 	flagCfg := defaultConfig()
 	cmd := &cobra.Command{}

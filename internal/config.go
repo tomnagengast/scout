@@ -62,39 +62,85 @@ func loadConfig(flagCfg Config, changed map[string]bool) (Config, error) {
 	return cfg, nil
 }
 
+type configFlagOption struct {
+	name string
+	set  func(*Config, Config)
+}
+
+var configFlagOptions = [...]configFlagOption{
+	{
+		name: "format",
+		set: func(cfg *Config, flagCfg Config) {
+			cfg.Format = flagCfg.Format
+		},
+	},
+	{
+		name: "write",
+		set: func(cfg *Config, flagCfg Config) {
+			cfg.Write = flagCfg.Write
+		},
+	},
+	{
+		name: "type",
+		set: func(cfg *Config, flagCfg Config) {
+			cfg.Type = flagCfg.Type
+		},
+	},
+	{
+		name: "max-depth",
+		set: func(cfg *Config, flagCfg Config) {
+			cfg.MaxDepth = flagCfg.MaxDepth
+		},
+	},
+	{
+		name: "provider",
+		set: func(cfg *Config, flagCfg Config) {
+			cfg.Provider = flagCfg.Provider
+		},
+	},
+	{
+		name: "model",
+		set: func(cfg *Config, flagCfg Config) {
+			cfg.Model = flagCfg.Model
+		},
+	},
+	{
+		name: "concurrency",
+		set: func(cfg *Config, flagCfg Config) {
+			cfg.Concurrency = flagCfg.Concurrency
+		},
+	},
+	{
+		name: "max-bytes",
+		set: func(cfg *Config, flagCfg Config) {
+			cfg.MaxBytes = flagCfg.MaxBytes
+		},
+	},
+	{
+		name: "no-cache",
+		set: func(cfg *Config, flagCfg Config) {
+			cfg.NoCache = flagCfg.NoCache
+		},
+	},
+	{
+		name: "cache-dir",
+		set: func(cfg *Config, flagCfg Config) {
+			cfg.CacheDir = flagCfg.CacheDir
+		},
+	},
+	{
+		name: "quiet",
+		set: func(cfg *Config, flagCfg Config) {
+			cfg.Quiet = flagCfg.Quiet
+		},
+	},
+}
+
 func applyChangedFlags(cfg *Config, flagCfg Config, changed map[string]bool) {
-	if changed["format"] {
-		cfg.Format = flagCfg.Format
-	}
-	if changed["write"] {
-		cfg.Write = flagCfg.Write
-	}
-	if changed["type"] {
-		cfg.Type = flagCfg.Type
-	}
-	if changed["max-depth"] {
-		cfg.MaxDepth = flagCfg.MaxDepth
-	}
-	if changed["provider"] {
-		cfg.Provider = flagCfg.Provider
-	}
-	if changed["model"] {
-		cfg.Model = flagCfg.Model
-	}
-	if changed["concurrency"] {
-		cfg.Concurrency = flagCfg.Concurrency
-	}
-	if changed["max-bytes"] {
-		cfg.MaxBytes = flagCfg.MaxBytes
-	}
-	if changed["no-cache"] {
-		cfg.NoCache = flagCfg.NoCache
-	}
-	if changed["cache-dir"] {
-		cfg.CacheDir = flagCfg.CacheDir
-	}
-	if changed["quiet"] {
-		cfg.Quiet = flagCfg.Quiet
+	for _, option := range configFlagOptions {
+		if changed[option.name] {
+			option.set(cfg, flagCfg)
+		}
 	}
 }
 

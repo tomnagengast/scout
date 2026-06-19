@@ -1,0 +1,62 @@
+version: 2
+
+project_name: scout
+
+builds:
+  - id: scout
+    main: ./cmd
+    binary: scout
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/tomnagengast/scout/internal/version.Version={{ .Version }}
+      - -X github.com/tomnagengast/scout/internal/version.Commit={{ .ShortCommit }}
+      - -X github.com/tomnagengast/scout/internal/version.Date={{ .Date }}
+
+archives:
+  - id: scout
+    ids:
+      - scout
+    formats:
+      - tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+release:
+  github:
+    owner: tomnagengast
+    name: scout
+
+homebrew_casks:
+  - name: scout
+    ids:
+      - scout
+    binaries:
+      - scout
+    repository:
+      owner: tomnagengast
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Casks
+    commit_msg_template: "update scout to {{ .Tag }}"
+    homepage: "https://github.com/tomnagengast/scout"
+    description: "Reconnaissance for your context window."
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/scout"]
+          end

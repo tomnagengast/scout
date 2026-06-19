@@ -3,6 +3,7 @@
 **Reconnaissance for your context window.** `scout` walks a tree of documents and emits a thin, machine-readable description layer — one tight summary per file — so an agent can survey what's there and load only what it needs.
 
 [![Status](https://img.shields.io/badge/status-alpha-orange.svg)](#roadmap)
+[![CI](https://github.com/tomnagengast/scout/actions/workflows/ci.yml/badge.svg)](https://github.com/tomnagengast/scout/actions/workflows/ci.yml)
 
 ---
 
@@ -42,7 +43,7 @@ scout docs/**
 **Homebrew**
 
 ```sh
-brew install tomnagengast/tap/scout
+brew install --cask tomnagengast/tap/scout
 ```
 
 **From source**
@@ -248,6 +249,7 @@ Provider arg placeholders:
 - [Config](./docs/config.md)
 - [Output](./docs/output.md)
 - [Architecture](./docs/architecture.md)
+- [Release](./docs/release.md)
 - [Contributing](./docs/contributing.md)
 
 ## Compared to

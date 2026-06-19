@@ -11,4 +11,5 @@ Start with [Install](./install.md) and [Getting started](./getting-started.md) i
 | [Config](./config.md)                   | Understand config precedence, provider config, env vars, and caching.  |
 | [Output](./output.md)                   | Use `list`, `json`, `skill`, and idempotent `--write` output.          |
 | [Architecture](./architecture.md)       | See how discovery, summarization, caching, rendering, and writes flow. |
+| [Release](./release.md)                 | Cut tagged releases and publish the Homebrew cask.                    |
 | [Contributing](./contributing.md)       | Run checks and work within the repository conventions.                 |

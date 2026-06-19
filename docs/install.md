@@ -14,7 +14,7 @@
 ## Homebrew
 
 ```sh
-brew install tomnagengast/tap/scout
+brew install --cask tomnagengast/tap/scout
 ```
 
 ## Build From Source
@@ -41,6 +41,8 @@ go build -o scout ./cmd
 ```
 
 `mise run build` stamps the binary with `git describe --tags --always --dirty`, the short commit, and the UTC build time. Set `SCOUT_VERSION` to override the displayed version for a release build.
+
+Tagged releases are built by GoReleaser and published as GitHub release archives plus a Homebrew cask. See [release.md](./release.md) for the release workflow.
 
 ## Install Locally
 

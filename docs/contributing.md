@@ -18,6 +18,13 @@ mise run test
 mise run build
 ```
 
+Release packaging is checked in CI with GoReleaser. If you touch `.goreleaser.yaml` or release workflows, also run:
+
+```sh
+goreleaser check
+goreleaser release --snapshot --clean
+```
+
 The direct Go equivalents are:
 
 ```sh

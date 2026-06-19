@@ -2,6 +2,10 @@
 
 All notable changes to `scout` are tracked here.
 
+## v0.1.2 - 2026-06-19
+
+- Renames the Homebrew cask token to `scout-cli` to avoid a collision with Homebrew's disabled `scout` cask.
+
 ## v0.1.1 - 2026-06-19
 
 - Updates `github.com/BurntSushi/toml` from `1.5.0` to `1.6.0`.

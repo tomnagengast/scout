@@ -44,7 +44,7 @@ scout docs/**
 
 ```sh
 brew tap tomnagengast/tap
-brew install --cask scout
+brew install --cask tomnagengast/tap/scout-cli
 ```
 
 **From source**

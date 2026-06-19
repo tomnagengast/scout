@@ -38,7 +38,7 @@ Homebrew (the recommended path):
 
 ```sh
 brew tap tomnagengast/tap
-brew install --cask scout
+brew install --cask tomnagengast/tap/scout-cli
 ```
 
 To build from source instead (e.g. for development):

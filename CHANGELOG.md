@@ -2,6 +2,11 @@
 
 All notable changes to `scout` are tracked here.
 
+## v0.1.4 - 2026-06-19
+
+- Adds shared repo-quality scaffolding: issue templates, a pull request template, CODEOWNERS, release and license badges, and related-tool links.
+- Adds post-publish Homebrew verification and fix-forward guidance to the release docs.
+
 ## v0.1.3 - 2026-06-19
 
 - Deepens summary generation so file and directory summaries share one cache/provider lifecycle.

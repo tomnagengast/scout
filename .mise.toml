@@ -11,12 +11,26 @@ run = "go test ./..."
 
 [tasks.build]
 description = "Build the scout binary"
-run = "go build -o ./scout ./cmd"
+run = '''
+version="${SCOUT_VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo dev)}"
+commit="$(git rev-parse --short HEAD 2>/dev/null || true)"
+date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+go build \
+  -ldflags "-X github.com/tomnagengast/scout/internal/version.Version=${version} -X github.com/tomnagengast/scout/internal/version.Commit=${commit} -X github.com/tomnagengast/scout/internal/version.Date=${date}" \
+  -o ./scout \
+  ./cmd
+'''
 
 [tasks.install-local]
 description = "Install scout binary to ~/.local/bin"
 run = '''
-go build -o ./scout ./cmd
+version="${SCOUT_VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo dev)}"
+commit="$(git rev-parse --short HEAD 2>/dev/null || true)"
+date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+go build \
+  -ldflags "-X github.com/tomnagengast/scout/internal/version.Version=${version} -X github.com/tomnagengast/scout/internal/version.Commit=${commit} -X github.com/tomnagengast/scout/internal/version.Date=${date}" \
+  -o ./scout \
+  ./cmd
 
 mkdir -p "${HOME}/.local/bin"
 tmp="${HOME}/.local/bin/scout.new"

@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/spf13/cobra"
+	"github.com/tomnagengast/scout/internal/version"
 )
 
 func Execute(ctx context.Context, args []string, stdout, stderr io.Writer) error {
@@ -18,6 +19,7 @@ func Execute(ctx context.Context, args []string, stdout, stderr io.Writer) error
 
 func newRootCommand(ctx context.Context, stdout, stderr io.Writer) *cobra.Command {
 	cfg := defaultConfig()
+	var showVersion bool
 	cmd := &cobra.Command{
 		Use:           "scout [paths...]",
 		Short:         "Reconnaissance for your context window",
@@ -26,6 +28,10 @@ func newRootCommand(ctx context.Context, stdout, stderr io.Writer) *cobra.Comman
 		SilenceErrors: true,
 		Args:          cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, paths []string) error {
+			if showVersion {
+				fmt.Fprintln(cmd.OutOrStdout(), version.String())
+				return nil
+			}
 			loadedCfg, err := loadConfig(cfg, changedConfigFlags(cmd))
 			if err != nil {
 				return err
@@ -36,6 +42,7 @@ func newRootCommand(ctx context.Context, stdout, stderr io.Writer) *cobra.Comman
 	cmd.SetOut(stdout)
 	cmd.SetErr(stderr)
 	bindConfigFlags(cmd, &cfg)
+	cmd.Flags().BoolVarP(&showVersion, "version", "v", false, "print version information")
 
 	return cmd
 }

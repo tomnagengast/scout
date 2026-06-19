@@ -31,7 +31,7 @@ The binary is written to `./scout`.
 Verify the build:
 
 ```sh
-./scout --help
+./scout --version
 ```
 
 The same build can be run without `mise`:
@@ -39,6 +39,8 @@ The same build can be run without `mise`:
 ```sh
 go build -o scout ./cmd
 ```
+
+`mise run build` stamps the binary with `git describe --tags --always --dirty`, the short commit, and the UTC build time. Set `SCOUT_VERSION` to override the displayed version for a release build.
 
 ## Install Locally
 
@@ -51,7 +53,7 @@ mise run install-local
 Make sure `~/.local/bin` is on your `PATH`, then verify:
 
 ```sh
-scout --help
+scout --version
 ```
 
 ## Summarizer Setup

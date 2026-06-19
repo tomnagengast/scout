@@ -57,6 +57,24 @@ func TestExecuteHelpDoesNotReturnError(t *testing.T) {
 	}
 }
 
+func TestExecuteVersionDoesNotRun(t *testing.T) {
+	for _, arg := range []string{"-v", "--version"} {
+		t.Run(arg, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			err := Execute(context.Background(), []string{arg}, &stdout, &stderr)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(stdout.String(), "scout ") {
+				t.Fatalf("version output missing command name:\n%s", stdout.String())
+			}
+			if stderr.Len() != 0 {
+				t.Fatalf("expected empty stderr, got:\n%s", stderr.String())
+			}
+		})
+	}
+}
+
 func TestExecutePrintsErrors(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	err := Execute(context.Background(), []string{"--format", "bad", "README.md"}, &stdout, &stderr)

@@ -50,7 +50,8 @@ brew install tomnagengast/tap/scout
 ```sh
 git clone https://github.com/tomnagengast/scout
 cd scout
-just build   # or: go build -o scout ./cmd
+mise install
+mise run build
 ```
 
 Scout generates summaries by shelling out to a headless CLI agent already installed on your machine. By default it uses `codex exec`; `claude -p` is also supported when Claude Code is installed.
@@ -74,6 +75,7 @@ Flags:
       --no-cache          Bypass the summary cache and re-summarize everything
       --cache-dir <path>  Cache location (default: $XDG_CACHE_HOME/scout)
       --quiet             Suppress progress output on stderr
+  -v, --version           Print version information
 ```
 
 `paths` accepts files, directories, and globs. Directories are walked recursively. `.gitignore` is respected by default, and you can add a `.scoutignore` for scout-specific exclusions.

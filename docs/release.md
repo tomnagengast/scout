@@ -2,9 +2,9 @@
 
 Releases are tag driven. A pushed semver tag builds `scout` with GoReleaser, creates a GitHub release, uploads checksummed archives, and publishes the Homebrew cask to `tomnagengast/homebrew-tap`.
 
-## Required GitHub Secret
+## Release Setup
 
-Create `tomnagengast/homebrew-tap` before publishing the first release. Set `HOMEBREW_TAP_GITHUB_TOKEN` in the `tomnagengast/scout` repository secrets. The token needs content write access to that tap repository.
+The Homebrew tap lives at `tomnagengast/homebrew-tap`. Keep `HOMEBREW_TAP_GITHUB_TOKEN` set in the `tomnagengast/scout` repository secrets. The token needs content write access to that tap repository.
 
 The release workflow uses the repository `GITHUB_TOKEN` for the GitHub release itself.
 
@@ -26,11 +26,11 @@ goreleaser release --snapshot --clean
 
 ## Cut a Release
 
-Create and push a semver tag:
+Update `CHANGELOG.md`, merge the release commit to `main`, then create and push the next semver tag:
 
 ```sh
-git tag -a v0.1.0 -m "v0.1.0"
-git push origin v0.1.0
+git tag -a v0.1.1 -m "v0.1.1"
+git push origin v0.1.1
 ```
 
 The `release` workflow only publishes from tag refs matching `v*.*.*`.
@@ -40,5 +40,6 @@ The `release` workflow only publishes from tag refs matching `v*.*.*`.
 GoReleaser publishes a Homebrew cask. Install the latest release with:
 
 ```sh
-brew install --cask tomnagengast/tap/scout
+brew tap tomnagengast/tap
+brew install --cask scout
 ```

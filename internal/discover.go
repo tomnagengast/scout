@@ -16,12 +16,40 @@ type discoveredTarget struct {
 	Type string
 }
 
+type discoveryTargetType int
+
+const (
+	discoveryTargetFiles discoveryTargetType = iota
+	discoveryTargetDirs
+	discoveryTargetUnknown
+)
+
+type discoveryRequest struct {
+	root        string
+	paths       []string
+	targetType  discoveryTargetType
+	maxDepth    int
+	extraIgnore []string
+}
+
+type discoverySession struct {
+	request discoveryRequest
+	matcher *gitignore.GitIgnore
+	seen    map[string]bool
+	targets []discoveredTarget
+}
+
 func discoverFiles(paths, extraIgnore []string) ([]string, error) {
 	return discoverFilesWithMaxDepth(paths, extraIgnore, 0)
 }
 
 func discoverFilesWithMaxDepth(paths, extraIgnore []string, maxDepth int) ([]string, error) {
-	targets, err := discoverTargets(paths, extraIgnore, entryTypeFile, maxDepth)
+	targets, err := discover(discoveryRequest{
+		paths:       paths,
+		targetType:  discoveryTargetFiles,
+		maxDepth:    maxDepth,
+		extraIgnore: extraIgnore,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -33,49 +61,78 @@ func discoverFilesWithMaxDepth(paths, extraIgnore []string, maxDepth int) ([]str
 }
 
 func discoverTargets(paths, extraIgnore []string, targetType string, maxDepth int) ([]discoveredTarget, error) {
-	ignoreMatcher := loadIgnoreMatcher(extraIgnore)
-	seen := map[string]bool{}
-	var targets []discoveredTarget
-	for _, input := range paths {
-		matches, err := resolveInput(input)
+	return discover(discoveryRequest{
+		paths:       paths,
+		targetType:  discoveryTargetTypeFromEntryType(targetType),
+		maxDepth:    maxDepth,
+		extraIgnore: extraIgnore,
+	})
+}
+
+func discover(request discoveryRequest) ([]discoveredTarget, error) {
+	session := newDiscoverySession(request)
+	return session.discover()
+}
+
+func newDiscoverySession(request discoveryRequest) *discoverySession {
+	if request.root == "" {
+		request.root = "."
+	}
+	return &discoverySession{
+		request: request,
+		matcher: loadIgnoreMatcher(request.root, request.extraIgnore),
+		seen:    map[string]bool{},
+	}
+}
+
+func (s *discoverySession) discover() ([]discoveredTarget, error) {
+	for _, input := range s.request.paths {
+		matches, err := s.resolveInput(input)
 		if err != nil {
 			return nil, err
 		}
 		for _, match := range matches {
-			err := addTargets(match, targetType, maxDepth, ignoreMatcher, seen, &targets)
-			if err != nil {
+			if err := s.addTargets(match); err != nil {
 				return nil, err
 			}
 		}
 	}
-	sort.Slice(targets, func(i, j int) bool {
-		return targets[i].Path < targets[j].Path
+	sort.Slice(s.targets, func(i, j int) bool {
+		return s.targets[i].Path < s.targets[j].Path
 	})
-	return targets, nil
+	return s.targets, nil
 }
 
-func resolveInput(input string) ([]string, error) {
+func (s *discoverySession) resolveInput(input string) ([]string, error) {
+	path := s.rootedPath(input)
 	if hasGlobMeta(input) {
-		matches, err := doublestar.FilepathGlob(input)
+		matches, err := doublestar.FilepathGlob(path)
 		if err != nil {
 			return nil, fmt.Errorf("glob %s: %w", input, err)
 		}
 		return matches, nil
 	}
-	if _, err := os.Stat(input); err != nil {
+	if _, err := os.Stat(path); err != nil {
 		return nil, err
 	}
-	return []string{input}, nil
+	return []string{path}, nil
+}
+
+func (s *discoverySession) rootedPath(path string) string {
+	if filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(s.request.root, path)
 }
 
 func hasGlobMeta(path string) bool {
 	return strings.ContainsAny(path, "*?[{")
 }
 
-func loadIgnoreMatcher(extra []string) *gitignore.GitIgnore {
+func loadIgnoreMatcher(root string, extra []string) *gitignore.GitIgnore {
 	var lines []string
 	for _, path := range []string{".gitignore", ".scoutignore"} {
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(filepath.Join(root, path))
 		if err == nil {
 			lines = append(lines, strings.Split(string(data), "\n")...)
 		}
@@ -85,7 +142,7 @@ func loadIgnoreMatcher(extra []string) *gitignore.GitIgnore {
 	return gitignore.CompileIgnoreLines(lines...)
 }
 
-func addTargets(path, targetType string, maxDepth int, matcher *gitignore.GitIgnore, seen map[string]bool, targets *[]discoveredTarget) error {
+func (s *discoverySession) addTargets(path string) error {
 	info, err := os.Stat(path)
 	if err != nil {
 		return err
@@ -95,61 +152,89 @@ func addTargets(path, targetType string, maxDepth int, matcher *gitignore.GitIgn
 			if err != nil {
 				return err
 			}
-			rel, err := filepath.Rel(".", p)
+			rel, err := s.relativePath(p)
 			if err != nil {
 				return err
 			}
-			rel = filepath.ToSlash(rel)
 			if d.IsDir() {
-				if rel != "." && matcher.MatchesPath(rel+"/") {
+				if rel != "." && s.matcher.MatchesPath(rel+"/") {
 					return filepath.SkipDir
 				}
 				depth, err := depthFromRoot(path, p)
 				if err != nil {
 					return err
 				}
-				if targetType == entryTypeDir {
-					if maxDepth == 0 || depth <= maxDepth {
-						addSeenTarget(rel, entryTypeDir, seen, targets)
-					}
+				if s.request.targetType == discoveryTargetDirs &&
+					(s.request.maxDepth == 0 || depth <= s.request.maxDepth) {
+					s.addSeenTarget(rel, discoveryTargetDirs)
 				}
-				if maxDepth > 0 && depth >= maxDepth {
+				if s.request.maxDepth > 0 && depth >= s.request.maxDepth {
 					return filepath.SkipDir
 				}
 				return nil
 			}
-			if targetType != entryTypeFile {
+			if s.request.targetType != discoveryTargetFiles {
 				return nil
 			}
-			if matcher.MatchesPath(rel) {
+			if s.matcher.MatchesPath(rel) {
 				return nil
 			}
-			addSeenTarget(rel, entryTypeFile, seen, targets)
+			s.addSeenTarget(rel, discoveryTargetFiles)
 			return nil
 		})
 	}
-	if targetType != entryTypeFile {
+	if s.request.targetType != discoveryTargetFiles {
 		return nil
 	}
-	rel, err := filepath.Rel(".", path)
+	rel, err := s.relativePath(path)
 	if err != nil {
 		return err
 	}
-	rel = filepath.ToSlash(rel)
-	if matcher.MatchesPath(rel) {
+	if s.matcher.MatchesPath(rel) {
 		return nil
 	}
-	addSeenTarget(rel, entryTypeFile, seen, targets)
+	s.addSeenTarget(rel, discoveryTargetFiles)
 	return nil
 }
 
-func addSeenTarget(path, targetType string, seen map[string]bool, targets *[]discoveredTarget) {
-	key := targetType + "\x00" + path
-	if seen[key] {
+func (s *discoverySession) relativePath(path string) (string, error) {
+	rel, err := filepath.Rel(s.request.root, path)
+	if err != nil {
+		return "", err
+	}
+	return filepath.ToSlash(rel), nil
+}
+
+func (s *discoverySession) addSeenTarget(path string, targetType discoveryTargetType) {
+	entryType := targetType.entryType()
+	key := entryType + "\x00" + path
+	if s.seen[key] {
 		return
 	}
-	seen[key] = true
-	*targets = append(*targets, discoveredTarget{Path: path, Type: targetType})
+	s.seen[key] = true
+	s.targets = append(s.targets, discoveredTarget{Path: path, Type: entryType})
+}
+
+func discoveryTargetTypeFromEntryType(entryType string) discoveryTargetType {
+	switch entryType {
+	case entryTypeFile:
+		return discoveryTargetFiles
+	case entryTypeDir:
+		return discoveryTargetDirs
+	default:
+		return discoveryTargetUnknown
+	}
+}
+
+func (t discoveryTargetType) entryType() string {
+	switch t {
+	case discoveryTargetFiles:
+		return entryTypeFile
+	case discoveryTargetDirs:
+		return entryTypeDir
+	default:
+		return ""
+	}
 }
 
 func depthFromRoot(root, path string) (int, error) {

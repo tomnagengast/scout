@@ -1,0 +1,71 @@
+# Install
+
+`scout` is distributed as a single Go binary. The repository uses `mise` to pin the Go toolchain and expose common development tasks.
+
+## System Requirements
+
+| Requirement           | Notes                                                                   |
+| --------------------- | ----------------------------------------------------------------------- |
+| Go                    | Managed by `mise`; see `.mise.toml` for the pinned version.             |
+| macOS or Linux        | The current build is pure Go.                                           |
+| A summarizer CLI      | Required for live summaries. The built-in default provider uses Codex.  |
+| Codex or Claude Code  | Optional individually; install whichever provider you configure.        |
+
+## Homebrew
+
+```sh
+brew install tomnagengast/tap/scout
+```
+
+## Build From Source
+
+Install project tools and build the binary:
+
+```sh
+mise install
+mise run build
+```
+
+The binary is written to `./scout`.
+
+Verify the build:
+
+```sh
+./scout --help
+```
+
+The same build can be run without `mise`:
+
+```sh
+go build -o scout ./cmd
+```
+
+## Install Locally
+
+Install to `~/.local/bin/scout`:
+
+```sh
+mise run install-local
+```
+
+Make sure `~/.local/bin` is on your `PATH`, then verify:
+
+```sh
+scout --help
+```
+
+## Summarizer Setup
+
+The default provider shells out to `codex exec`. Authenticate Codex before running a real summary:
+
+```sh
+codex login
+```
+
+To use Claude Code instead, install and authenticate Claude Code, then run with:
+
+```sh
+scout --provider claude <paths...>
+```
+
+See [config.md](./config.md) for provider command configuration.

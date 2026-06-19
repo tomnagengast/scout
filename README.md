@@ -225,6 +225,16 @@ Provider arg placeholders:
 
 **CI freshness check.** Run `scout … --write` in CI and fail if the managed block changed — the same idempotency guarantee that keeps `go generate`-style artifacts in sync.
 
+## Docs
+
+- [Docs index](./docs/README.md)
+- [Install](./docs/install.md)
+- [Getting started](./docs/getting-started.md)
+- [Config](./docs/config.md)
+- [Output](./docs/output.md)
+- [Architecture](./docs/architecture.md)
+- [Contributing](./docs/contributing.md)
+
 ## Compared to
 
 | Tool | Output | Token cost | Best for |
@@ -253,4 +263,4 @@ Scout is complementary to all of these. It's the layer that decides *whether* yo
 
 ## Contributing
 
-Issues and PRs welcome. Please run the test suite and `scout --write` before submitting so the index stays current.
+Issues and PRs welcome. Please run the test suite and update the relevant docs before submitting.

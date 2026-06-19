@@ -1,15 +1,22 @@
 # Getting started
 
-New to `scout`? This walks you from a source build to your first few indexes. It takes a couple of minutes, and you don't need to configure anything to start.
+New to `scout`? This walks you from installation to your first few indexes. It takes a couple of minutes, and you don't need to configure anything to start.
 
-If you installed with Homebrew instead, drop the `./` from the commands below and just run `scout`.
+## Install with Homebrew
 
-## Build
+```sh
+brew tap tomnagengast/tap
+brew install --cask tomnagengast/tap/scout-cli
+scout --help
+```
+
+## Build from source
 
 ```sh
 mise install
 mise run build
-./scout --help
+mise run install-local
+scout --help
 ```
 
 ## Run the first index
@@ -17,9 +24,9 @@ mise run build
 Point `scout` at one or more files, directories, or globs:
 
 ```sh
-./scout README.md
-./scout docs
-./scout "docs/**/*.md"
+scout README.md
+scout docs
+scout "docs/**/*.md"
 ```
 
 The default output is `list`: one path and one dense description per file. A good run looks like this:
@@ -33,7 +40,7 @@ That description is generated for you: `scout` hands each file to a headless CLI
 Summarize directories instead of files when you want a higher-level map:
 
 ```sh
-./scout docs --type dir --max-depth 2
+scout docs --type dir --max-depth 2
 ```
 
 Directory summaries are based on child file summaries. Pass a directory path for `--type dir`; shell-expanded file globs such as `**/*.md` match files, not directories.
@@ -43,13 +50,13 @@ Directory summaries are based on child file summaries. Pass a directory path for
 Use JSON when another tool or agent will parse the result:
 
 ```sh
-./scout docs --format json
+scout docs --format json
 ```
 
 Use skill frontmatter when indexing capability documents:
 
 ```sh
-./scout skills --format skill
+scout skills --format skill
 ```
 
 See [output.md](./output.md) for exact output shapes.
@@ -59,7 +66,7 @@ See [output.md](./output.md) for exact output shapes.
 Append or refresh a managed block in a file:
 
 ```sh
-./scout docs --write README.md
+scout docs --write README.md
 ```
 
 `scout` replaces only the region between:
@@ -72,7 +79,7 @@ Append or refresh a managed block in a file:
 For `--format skill`, `--write` updates the leading frontmatter for exactly one input file:
 
 ```sh
-./scout docs/gh.md --format skill --write docs/gh.md
+scout docs/gh.md --format skill --write docs/gh.md
 ```
 
 ## Troubleshooting
@@ -81,7 +88,7 @@ A few things that trip people up on the first run:
 
 **Descriptions come back blank.** The provider isn't set up. Scout discovers files fine without one, but it can't summarize them. Run `codex login`, or switch with `--provider claude` if you use Claude Code.
 
-**`command not found: scout`.** A source build leaves the binary in the repo, so run `./scout` from the project root, or `mise run install-local` to put it on your `PATH`.
+**`command not found: scout`.** A source build leaves the binary in the repo until you install it locally. Run `mise run install-local` to put it on your `PATH`.
 
 **A glob matched nothing, or way too much.** Quote globs so scout expands them instead of your shell: `scout "docs/**/*.md"`.
 

@@ -33,6 +33,28 @@ type cacheRecord struct {
 	Description string `json:"description"`
 }
 
+type summaryGenerator struct {
+	cfg           Config
+	summarizer    Summarizer
+	dirSummarizer DirSummarizer
+}
+
+type summaryInput struct {
+	entryType string
+	path      string
+	key       string
+	summarize func(context.Context) (string, error)
+}
+
+func newSummaryGenerator(cfg Config, summarizer Summarizer) summaryGenerator {
+	dirSummarizer, _ := summarizer.(DirSummarizer)
+	return summaryGenerator{
+		cfg:           cfg,
+		summarizer:    summarizer,
+		dirSummarizer: dirSummarizer,
+	}
+}
+
 func summarizeTargets(ctx context.Context, targets []discoveredTarget, cfg Config, summarizer Summarizer, stderr io.Writer) ([]Entry, error) {
 	paths := make([]string, 0, len(targets))
 	for _, target := range targets {
@@ -47,6 +69,8 @@ func summarizeTargets(ctx context.Context, targets []discoveredTarget, cfg Confi
 func summarizeFiles(ctx context.Context, files []string, cfg Config, summarizer Summarizer, stderr io.Writer) ([]Entry, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	generator := newSummaryGenerator(cfg, summarizer)
 
 	type job struct {
 		index int
@@ -77,7 +101,7 @@ func summarizeFiles(ctx context.Context, files []string, cfg Config, summarizer 
 					if !ok {
 						return
 					}
-					entry, err := summarizeFile(ctx, j.path, cfg, summarizer)
+					entry, err := generator.summarizeFile(ctx, j.path)
 					select {
 					case results <- result{index: j.index, entry: entry, err: err}:
 					case <-ctx.Done():
@@ -132,31 +156,27 @@ func summarizeFiles(ctx context.Context, files []string, cfg Config, summarizer 
 }
 
 func summarizeFile(ctx context.Context, path string, cfg Config, summarizer Summarizer) (Entry, error) {
-	content, truncated, err := readFileHead(path, cfg.MaxBytes)
+	return newSummaryGenerator(cfg, summarizer).summarizeFile(ctx, path)
+}
+
+func (g summaryGenerator) summarizeFile(ctx context.Context, path string) (Entry, error) {
+	content, truncated, err := readFileHead(path, g.cfg.MaxBytes)
 	if err != nil {
 		return Entry{}, err
 	}
-	key := cacheKey(path, content, cfg)
-	if !cfg.NoCache {
-		if description, ok := readCache(cfg.CacheDir, key); ok {
-			return newEntry(entryTypeFile, path, description), nil
-		}
-	}
-	description, err := summarizer.Summarize(ctx, path, content, truncated)
-	if err != nil {
-		return Entry{}, err
-	}
-	description = cleanDescription(description)
-	if description == "" {
-		return Entry{}, fmt.Errorf("%s: model returned empty description", path)
-	}
-	if !cfg.NoCache {
-		_ = writeCache(cfg.CacheDir, key, description)
-	}
-	return newEntry(entryTypeFile, path, description), nil
+	return g.summarize(ctx, summaryInput{
+		entryType: entryTypeFile,
+		path:      path,
+		key:       cacheKey(path, content, g.cfg),
+		summarize: func(ctx context.Context) (string, error) {
+			return g.summarizer.Summarize(ctx, path, content, truncated)
+		},
+	})
 }
 
 func summarizeDirs(ctx context.Context, dirs []string, cfg Config, summarizer Summarizer, stderr io.Writer) ([]Entry, error) {
+	generator := newSummaryGenerator(cfg, summarizer)
+
 	filesByDir := map[string][]string{}
 	seenFiles := map[string]bool{}
 	var files []string
@@ -175,6 +195,10 @@ func summarizeDirs(ctx context.Context, dirs []string, cfg Config, summarizer Su
 	}
 	sort.Strings(files)
 
+	if cfg.NoCache && len(files) > 0 && generator.dirSummarizer == nil {
+		return nil, errors.New("summarizer does not support directory summaries")
+	}
+
 	fileEntriesByPath := map[string]Entry{}
 	if len(files) > 0 {
 		fileEntries, err := summarizeFiles(ctx, files, cfg, summarizer, stderr)
@@ -192,7 +216,7 @@ func summarizeDirs(ctx context.Context, dirs []string, cfg Config, summarizer Su
 		for _, file := range filesByDir[dir] {
 			childEntries = append(childEntries, fileEntriesByPath[file])
 		}
-		entry, err := summarizeDir(ctx, dir, childEntries, cfg, summarizer)
+		entry, err := generator.summarizeDir(ctx, dir, childEntries)
 		if err != nil {
 			return nil, err
 		}
@@ -208,32 +232,45 @@ func summarizeDirs(ctx context.Context, dirs []string, cfg Config, summarizer Su
 }
 
 func summarizeDir(ctx context.Context, path string, childEntries []Entry, cfg Config, summarizer Summarizer) (Entry, error) {
+	return newSummaryGenerator(cfg, summarizer).summarizeDir(ctx, path, childEntries)
+}
+
+func (g summaryGenerator) summarizeDir(ctx context.Context, path string, childEntries []Entry) (Entry, error) {
 	content := directoryRollupContent(childEntries)
 	if content == "" {
 		return newEntry(entryTypeDir, path, "Contains no matched files."), nil
 	}
-	key := dirCacheKey(path, content, cfg)
-	if !cfg.NoCache {
-		if description, ok := readCache(cfg.CacheDir, key); ok {
-			return newEntry(entryTypeDir, path, description), nil
+	return g.summarize(ctx, summaryInput{
+		entryType: entryTypeDir,
+		path:      path,
+		key:       dirCacheKey(path, content, g.cfg),
+		summarize: func(ctx context.Context) (string, error) {
+			if g.dirSummarizer == nil {
+				return "", errors.New("summarizer does not support directory summaries")
+			}
+			return g.dirSummarizer.SummarizeDir(ctx, path, content)
+		},
+	})
+}
+
+func (g summaryGenerator) summarize(ctx context.Context, input summaryInput) (Entry, error) {
+	if !g.cfg.NoCache {
+		if description, ok := readCache(g.cfg.CacheDir, input.key); ok {
+			return newEntry(input.entryType, input.path, description), nil
 		}
 	}
-	dirSummarizer, ok := summarizer.(DirSummarizer)
-	if !ok {
-		return Entry{}, errors.New("summarizer does not support directory summaries")
-	}
-	description, err := dirSummarizer.SummarizeDir(ctx, path, content)
+	description, err := input.summarize(ctx)
 	if err != nil {
 		return Entry{}, err
 	}
 	description = cleanDescription(description)
 	if description == "" {
-		return Entry{}, fmt.Errorf("%s: model returned empty description", path)
+		return Entry{}, fmt.Errorf("%s: model returned empty description", input.path)
 	}
-	if !cfg.NoCache {
-		_ = writeCache(cfg.CacheDir, key, description)
+	if !g.cfg.NoCache {
+		_ = writeCache(g.cfg.CacheDir, input.key, description)
 	}
-	return newEntry(entryTypeDir, path, description), nil
+	return newEntry(input.entryType, input.path, description), nil
 }
 
 func directoryRollupContent(entries []Entry) string {

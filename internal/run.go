@@ -28,12 +28,12 @@ func run(ctx context.Context, cfg Config, paths []string, stdout, stderr io.Writ
 		return err
 	}
 
-	rendered, err := renderEntries(entries, cfg.Format)
+	if cfg.Write != "" {
+		return writeIndex(cfg.Write, cfg.Format, entries)
+	}
+	rendered, err := renderStdout(entries, cfg.Format)
 	if err != nil {
 		return err
-	}
-	if cfg.Write != "" {
-		return writeIndex(cfg.Write, cfg.Format, rendered, entries)
 	}
 	_, err = stdout.Write(rendered)
 	return err

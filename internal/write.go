@@ -14,14 +14,21 @@ const (
 	scoutEnd   = "<!-- scout:end -->"
 )
 
-func writeIndex(path, format string, rendered []byte, entries []Entry) error {
-	if format == "skill" {
+func writeIndex(path, format string, entries []Entry) error {
+	switch format {
+	case "skill":
 		return writeSkillFrontmatter(path, entries)
+	case "list":
+		return writeManagedBlock(path, renderManagedList(entries))
+	case "json":
+		rendered, err := renderJSON(entries)
+		if err != nil {
+			return err
+		}
+		return writeManagedBlock(path, rendered)
+	default:
+		return fmt.Errorf("unsupported format %q", format)
 	}
-	if format == "list" {
-		rendered = renderManagedList(entries)
-	}
-	return writeManagedBlock(path, rendered)
 }
 
 func writeManagedBlock(path string, rendered []byte) error {

@@ -2,6 +2,13 @@
 
 All notable changes to `scout` are tracked here.
 
+## v0.1.3 - 2026-06-19
+
+- Deepens summary generation so file and directory summaries share one cache/provider lifecycle.
+- Deepens discovery around an explicit request/session shape with root-local ignore handling.
+- Deepens output emission so write destinations own their destination-specific rendering.
+- Reduces repeated configuration flag metadata while preserving config precedence.
+
 ## v0.1.2 - 2026-06-19
 
 - Renames the Homebrew cask token to `scout-cli` to avoid a collision with Homebrew's disabled `scout` cask.

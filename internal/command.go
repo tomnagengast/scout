@@ -63,22 +63,9 @@ func bindConfigFlags(cmd *cobra.Command, cfg *Config) {
 }
 
 func changedConfigFlags(cmd *cobra.Command) map[string]bool {
-	names := []string{
-		"format",
-		"write",
-		"type",
-		"max-depth",
-		"provider",
-		"model",
-		"concurrency",
-		"max-bytes",
-		"no-cache",
-		"cache-dir",
-		"quiet",
-	}
 	changed := map[string]bool{}
-	for _, name := range names {
-		changed[name] = cmd.Flags().Changed(name)
+	for _, option := range configFlagOptions {
+		changed[option.name] = cmd.Flags().Changed(option.name)
 	}
 	return changed
 }

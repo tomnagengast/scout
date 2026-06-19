@@ -1,6 +1,6 @@
 # Contributing
 
-`scout` is intended to stay small, local-first, and easy to reason about.
+Thanks for taking a look. `scout` is meant to stay small, local-first, and easy to reason about, and contributions that keep it that way are very welcome.
 
 ## Development loop
 

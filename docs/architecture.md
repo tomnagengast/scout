@@ -4,6 +4,8 @@
 
 ## Layers
 
+Each stage owns one file, so when you're hunting for something you can usually jump straight to the part that does it.
+
 The Cobra entrypoint lives in `cmd/main.go`. It delegates to the `internal` package.
 
 Configuration lives in `internal/config.go`. It merges defaults, user config, project config, environment variables, and changed CLI flags.
@@ -35,8 +37,8 @@ Changing provider configuration intentionally invalidates old summaries, because
 
 ## Current boundaries
 
-`scout` reads the head of each file, not the full file, after `max_bytes`.
+A few things scout deliberately leaves out for now, so you know what to expect:
 
-`scout` shells out to local CLI agents. It does not call hosted model APIs directly.
-
-`scout` does not run a daemon or MCP server yet.
+- It reads the head of each file, not the whole thing, once it hits `max_bytes`.
+- It shells out to local CLI agents rather than calling hosted model APIs directly.
+- It runs as a one-shot command. There's no daemon or MCP server yet, though that's on the roadmap.

@@ -251,7 +251,7 @@ Provider arg placeholders:
 | ---- | ------- |
 | [Docs index](./docs/README.md) | Where to start and how the guides fit together. |
 | [Install](./docs/install.md) | Build the binary, install locally, and verify the CLI. |
-| [Getting started](./docs/getting-started.md) | Run the first index, choose formats, write managed blocks. |
+| [Getting started](./docs/getting-started.md) | Run the first index, choose formats, write managed blocks, troubleshoot. |
 | [Config](./docs/config.md) | Precedence, provider config, env vars, and caching. |
 | [Output](./docs/output.md) | `list`, `json`, `skill`, and idempotent `--write`. |
 | [Architecture](./docs/architecture.md) | How discovery, summarization, caching, and writes flow. |

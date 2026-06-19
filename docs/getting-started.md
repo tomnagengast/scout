@@ -1,6 +1,8 @@
 # Getting started
 
-This guide walks through a local source build and the first `scout` runs.
+New to `scout`? This walks you from a source build to your first few indexes. It takes a couple of minutes, and you don't need to configure anything to start.
+
+If you installed with Homebrew instead, drop the `./` from the commands below and just run `scout`.
 
 ## Build
 
@@ -20,13 +22,13 @@ Point `scout` at one or more files, directories, or globs:
 ./scout "docs/**/*.md"
 ```
 
-The default output is `list`: one path and one dense description per file.
+The default output is `list`: one path and one dense description per file. A good run looks like this:
 
 ```text
 README.md  Describes scout, its install flow, CLI flags, output formats, configuration, and project goals.
 ```
 
-Real summaries require a configured headless CLI provider. By default, `scout` uses `codex exec`. Use `--provider claude` to use the built-in Claude Code provider.
+That description is generated for you: `scout` hands each file to a headless CLI provider and asks for one tight sentence. By default it uses `codex exec` (run `codex login` once); pass `--provider claude` to use Claude Code instead. Without a working provider, scout still lists your files but leaves the descriptions blank, which is the most common first-run surprise (see [Troubleshooting](#troubleshooting)).
 
 Summarize directories instead of files when you want a higher-level map:
 
@@ -72,6 +74,22 @@ For `--format skill`, `--write` updates the leading frontmatter for exactly one 
 ```sh
 ./scout docs/gh.md --format skill --write docs/gh.md
 ```
+
+## Troubleshooting
+
+A few things that trip people up on the first run:
+
+**Descriptions come back blank.** The provider isn't set up. Scout discovers files fine without one, but it can't summarize them. Run `codex login`, or switch with `--provider claude` if you use Claude Code.
+
+**`command not found: scout`.** A source build leaves the binary in the repo, so run `./scout` from the project root, or `mise run install-local` to put it on your `PATH`.
+
+**A glob matched nothing, or way too much.** Quote globs so scout expands them instead of your shell: `scout "docs/**/*.md"`.
+
+**`--type dir` summarized files, not directories.** Pass a directory path. A shell-expanded `**/*.md` matches files; use `scout docs --type dir` instead.
+
+**Summaries look stale after switching provider or model.** That's expected. The cache key includes the provider and model, so changing either invalidates old entries. Re-run, or force fresh output with `--no-cache`.
+
+**Files are missing from the index.** Check that they aren't excluded by `.gitignore`, `.scoutignore`, or an `ignore` glob in `scout.toml`.
 
 ## Common development commands
 

@@ -38,6 +38,15 @@ func (failingSummarizer) Summarize(context.Context, string, string, bool) (strin
 	panic("cache was not used")
 }
 
+type fileOnlySummarizer struct {
+	called bool
+}
+
+func (s *fileOnlySummarizer) Summarize(context.Context, string, string, bool) (string, error) {
+	s.called = true
+	return "unexpected file summary", nil
+}
+
 func mustWrite(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

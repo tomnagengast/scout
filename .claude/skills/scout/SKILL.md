@@ -33,7 +33,14 @@ scout is the layer that decides *whether* you need to.
 
 ## Prerequisites
 
-Scout is a Go CLI. Confirm it's available (`scout --version`) or build from source:
+Scout is a Go CLI. Confirm it's available (`scout --version`); if not, install via
+Homebrew (the recommended path):
+
+```sh
+brew install --cask tomnagengast/tap/scout
+```
+
+To build from source instead (e.g. for development):
 
 ```sh
 mise install && mise run build   # produces ./scout

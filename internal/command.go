@@ -57,6 +57,7 @@ func bindConfigFlags(cmd *cobra.Command, cfg *Config) {
 	flags.StringVarP(&cfg.Model, "model", "m", cfg.Model, "model passed to the summarizer provider")
 	flags.IntVarP(&cfg.Concurrency, "concurrency", "c", cfg.Concurrency, "files summarized in parallel")
 	flags.IntVar(&cfg.MaxBytes, "max-bytes", cfg.MaxBytes, "max bytes read per file")
+	flags.IntVar(&cfg.Limit, "limit", cfg.Limit, "target word limit per description, 0 for unlimited")
 	flags.BoolVar(&cfg.NoCache, "no-cache", cfg.NoCache, "bypass the summary cache")
 	flags.StringVar(&cfg.CacheDir, "cache-dir", cfg.CacheDir, "cache location")
 	flags.BoolVar(&cfg.Quiet, "quiet", cfg.Quiet, "suppress progress output on stderr")

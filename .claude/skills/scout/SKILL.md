@@ -148,9 +148,9 @@ ones. Cache lives at `$XDG_CACHE_HOME/scout` (override with `--cache-dir` or
 ## Configuration (only if defaults aren't enough)
 
 Precedence, lowest to highest: built-in defaults → user config
-(`$XDG_CONFIG_HOME/scout.toml` or `~/.config/scout.toml`) → project `scout.toml`
-in the working dir or repo root → environment variables (`SCOUT_PROVIDER`,
-`SCOUT_MODEL`, `SCOUT_CACHE_DIR`) → CLI flags.
+(`$XDG_CONFIG_HOME/scout/scout.toml` or `~/.config/scout/scout.toml`) → project
+config at `<repo-root>/.config/scout.toml` → environment variables
+(`SCOUT_PROVIDER`, `SCOUT_MODEL`, `SCOUT_CACHE_DIR`) → CLI flags.
 
 You only need a `scout.toml` to point at a provider wrapper, change provider
 flags, define a new provider name, or add `ignore` globs on top of

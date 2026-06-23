@@ -12,6 +12,7 @@ import (
 type cliSummarizer struct {
 	provider string
 	model    string
+	limit    int
 	config   CLIProviderConfig
 }
 
@@ -55,6 +56,7 @@ func newSummarizer(cfg Config) (Summarizer, error) {
 	return &cliSummarizer{
 		provider: cfg.Provider,
 		model:    cfg.Model,
+		limit:    cfg.Limit,
 		config:   providerConfig,
 	}, nil
 }
@@ -88,11 +90,11 @@ func providerConfigFor(cfg Config, provider string) (CLIProviderConfig, error) {
 }
 
 func (s *cliSummarizer) Summarize(ctx context.Context, path, content string, truncated bool) (string, error) {
-	return s.runPrompt(ctx, summaryPrompt(path, content, truncated))
+	return s.runPrompt(ctx, summaryPrompt(path, content, truncated, s.limit))
 }
 
 func (s *cliSummarizer) SummarizeDir(ctx context.Context, path, content string) (string, error) {
-	return s.runPrompt(ctx, dirSummaryPrompt(path, content))
+	return s.runPrompt(ctx, dirSummaryPrompt(path, content, s.limit))
 }
 
 func (s *cliSummarizer) runPrompt(ctx context.Context, prompt string) (string, error) {
@@ -126,7 +128,7 @@ func (s *cliSummarizer) runPrompt(ctx context.Context, prompt string) (string, e
 	return stdout.String(), nil
 }
 
-func summaryPrompt(path, content string, truncated bool) string {
+func summaryPrompt(path, content string, truncated bool, limit int) string {
 	truncatedNote := ""
 	if truncated {
 		truncatedNote = "\nThe file was truncated; summarize only the visible head without guessing hidden content."
@@ -134,24 +136,31 @@ func summaryPrompt(path, content string, truncated bool) string {
 	return fmt.Sprintf(`Write one dense, action-oriented file description for an AI agent building a progressive-disclosure map.
 
 Describe what the file is for and its boundaries. Mention explicit exclusions only when the file makes them clear.
-Return exactly one sentence, no markdown, no path prefix, no quotes.
+%s
 
 Path: %s%s
 
 File content:
-%s`, path, truncatedNote, content)
+%s`, returnSentenceInstruction(limit), path, truncatedNote, content)
 }
 
-func dirSummaryPrompt(path, content string) string {
+func dirSummaryPrompt(path, content string, limit int) string {
 	return fmt.Sprintf(`Write one dense, action-oriented directory description for an AI agent building a progressive-disclosure map.
 
 Describe what this directory covers based on its child file summaries. Mention explicit exclusions only when the child summaries make them clear.
-Return exactly one sentence, no markdown, no path prefix, no quotes.
+%s
 
 Directory: %s
 
 Child file summaries:
-%s`, path, content)
+%s`, returnSentenceInstruction(limit), path, content)
+}
+
+func returnSentenceInstruction(limit int) string {
+	if limit > 0 {
+		return fmt.Sprintf("Return exactly one sentence of at most %d words, no markdown, no path prefix, no quotes.", limit)
+	}
+	return "Return exactly one sentence, no markdown, no path prefix, no quotes."
 }
 
 type expandedArgsOptions struct {

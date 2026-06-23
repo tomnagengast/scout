@@ -50,6 +50,9 @@ func loadConfig(flagCfg Config, changed map[string]bool) (Config, error) {
 	if cfg.MaxBytes < 1 {
 		return cfg, errors.New("max-bytes must be at least 1")
 	}
+	if cfg.Limit < 0 {
+		return cfg, errors.New("limit must be at least 0")
+	}
 	if cfg.MaxDepth < 0 {
 		return cfg, errors.New("max-depth must be at least 0")
 	}
@@ -117,6 +120,12 @@ var configFlagOptions = [...]configFlagOption{
 		},
 	},
 	{
+		name: "limit",
+		set: func(cfg *Config, flagCfg Config) {
+			cfg.Limit = flagCfg.Limit
+		},
+	},
+	{
 		name: "no-cache",
 		set: func(cfg *Config, flagCfg Config) {
 			cfg.NoCache = flagCfg.NoCache
@@ -157,13 +166,13 @@ func configFiles() []string {
 
 func userConfigFile() string {
 	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
-		return filepath.Join(xdg, "scout.toml")
+		return filepath.Join(xdg, "scout", "scout.toml")
 	}
 	home, err := os.UserHomeDir()
 	if err != nil || home == "" {
 		return ""
 	}
-	return filepath.Join(home, ".config", "scout.toml")
+	return filepath.Join(home, ".config", "scout", "scout.toml")
 }
 
 func findProjectConfigFile() string {
@@ -172,11 +181,11 @@ func findProjectConfigFile() string {
 		return ""
 	}
 	for {
-		candidate := filepath.Join(dir, "scout.toml")
-		if _, err := os.Stat(candidate); err == nil {
-			return candidate
-		}
 		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
+			candidate := filepath.Join(dir, ".config", "scout.toml")
+			if fileExists(candidate) {
+				return candidate
+			}
 			return ""
 		}
 		parent := filepath.Dir(dir)

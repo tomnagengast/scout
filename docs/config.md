@@ -7,8 +7,8 @@
 Configuration is applied in this order:
 
 1. Built-in defaults
-2. User config at `$XDG_CONFIG_HOME/scout.toml` or `~/.config/scout.toml`
-3. Project `scout.toml` in the working directory or repo root
+2. User config at `$XDG_CONFIG_HOME/scout/scout.toml` or `~/.config/scout/scout.toml`
+3. Project config at `<repo-root>/.config/scout.toml` (repo root is the git toplevel)
 4. Environment variables
 5. CLI flags
 
@@ -20,6 +20,7 @@ type        = "file"
 max_depth   = 0
 concurrency = 2
 max_bytes   = 16384
+limit       = 0
 
 [providers.codex]
 command = "codex"
@@ -69,6 +70,8 @@ The built-in `codex` provider ignores Codex user config and project rules by def
 
 `max_bytes` limits how many bytes of each file are read before summarization. Large files are summarized from the head only.
 
+`limit` requests a target word limit per description. The default `0` means unlimited. It is a soft target injected into the summarizer prompt, not a hard truncation, so descriptions may occasionally exceed it.
+
 `cache_dir` changes where summary cache records are stored. The default is `$XDG_CACHE_HOME/scout` or `~/.cache/scout`.
 
 `ignore` adds scout-specific ignore globs on top of `.gitignore` and `.scoutignore`.
@@ -95,4 +98,4 @@ If `{prompt}` is not used, `scout` writes the prompt to stdin. If `{output}` is 
 
 ## Cache
 
-Cache keys include the prompt version, provider, model, provider command, provider args, path, and summary input content. Use `--no-cache` to force fresh summaries.
+Cache keys include the prompt version, provider, model, word limit, provider command, provider args, path, and summary input content. Use `--no-cache` to force fresh summaries.

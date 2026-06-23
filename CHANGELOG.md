@@ -2,6 +2,12 @@
 
 All notable changes to `scout` are tracked here.
 
+## v0.1.6 - 2026-06-22
+
+- Handles fully-qualified (absolute) paths in discovery: scout now emits a clean absolute path for targets outside the working directory instead of failing with `Rel: can't make ... relative to .`.
+- Adds a `--limit` flag (and `limit` config) to cap the target word count per description; the value is woven into the summary prompts and the cache key.
+- Relocates config files: the user config now lives at `$XDG_CONFIG_HOME/scout/scout.toml` (or `~/.config/scout/scout.toml`), and project config is read from `<repo-root>/.config/scout.toml`.
+
 ## v0.1.5 - 2026-06-19
 
 - Fixes Homebrew release version output to print the clean semver tag, such as `scout v0.1.5`.

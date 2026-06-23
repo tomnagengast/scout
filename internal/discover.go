@@ -198,11 +198,40 @@ func (s *discoverySession) addTargets(path string) error {
 }
 
 func (s *discoverySession) relativePath(path string) (string, error) {
-	rel, err := filepath.Rel(s.request.root, path)
+	base := s.request.root
+	target := path
+	// filepath.Rel requires base and target to share a space (both absolute or
+	// both relative). When only one is absolute, resolve both before relativizing.
+	if filepath.IsAbs(base) != filepath.IsAbs(target) {
+		var err error
+		if base, err = filepath.Abs(base); err != nil {
+			return "", err
+		}
+		if target, err = filepath.Abs(target); err != nil {
+			return "", err
+		}
+	}
+	rel, err := filepath.Rel(base, target)
+	if err != nil {
+		// Different volumes etc. fall back to the cleaned absolute path rather
+		// than failing the run.
+		return absSlash(path)
+	}
+	// When the target escapes root, emit the absolute path (fd/rg-style) instead
+	// of a ../-prefixed relative path.
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return absSlash(path)
+	}
+	return filepath.ToSlash(rel), nil
+}
+
+// absSlash returns the cleaned, absolute, slash-separated form of path.
+func absSlash(path string) (string, error) {
+	abs, err := filepath.Abs(path)
 	if err != nil {
 		return "", err
 	}
-	return filepath.ToSlash(rel), nil
+	return filepath.ToSlash(abs), nil
 }
 
 func (s *discoverySession) addSeenTarget(path string, targetType discoveryTargetType) {

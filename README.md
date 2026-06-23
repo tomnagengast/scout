@@ -73,6 +73,7 @@ Flags:
   -m, --model <model>     Model passed to the summarizer provider (default: provider default)
   -c, --concurrency <n>   Files summarized in parallel (default: 2)
       --max-bytes <n>     Max bytes read per file before truncation (default: 16384)
+      --limit <n>         Target word limit per description, 0 for unlimited (default: 0)
       --no-cache          Bypass the summary cache and re-summarize everything
       --cache-dir <path>  Cache location (default: $XDG_CACHE_HOME/scout)
       --quiet             Suppress progress output on stderr
@@ -178,15 +179,16 @@ Summaries are generated concurrently (`--concurrency`), and output ordering is s
 
 ## Configuration
 
-Flags win over environment variables, which win over a project `scout.toml` in the working directory or repo root, which wins over the user config at `$XDG_CONFIG_HOME/scout.toml` or `~/.config/scout.toml`.
+Flags win over environment variables, which win over a project config at `<repo-root>/.config/scout.toml`, which wins over the user config at `$XDG_CONFIG_HOME/scout/scout.toml` or `~/.config/scout/scout.toml`.
 
 ```toml
-# ~/.config/scout.toml
+# ~/.config/scout/scout.toml
 provider    = "codex"
 type        = "file"
 max_depth   = 0
 concurrency = 2
 max_bytes   = 16384
+limit       = 0
 
 [providers.codex]
 command = "codex"

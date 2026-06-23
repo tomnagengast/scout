@@ -27,6 +27,33 @@ func TestExpandProviderArgs(t *testing.T) {
 	}
 }
 
+func TestSummaryPromptLimitClause(t *testing.T) {
+	withLimit := summaryPrompt("note.md", "hello", false, 8)
+	if !strings.Contains(withLimit, "at most 8 words") {
+		t.Fatalf("expected word limit clause: %q", withLimit)
+	}
+
+	noLimit := summaryPrompt("note.md", "hello", false, 0)
+	if strings.Contains(noLimit, "at most") {
+		t.Fatalf("did not expect word limit clause: %q", noLimit)
+	}
+	if !strings.Contains(noLimit, "Return exactly one sentence, no markdown") {
+		t.Fatalf("expected default sentence instruction: %q", noLimit)
+	}
+}
+
+func TestDirSummaryPromptLimitClause(t *testing.T) {
+	withLimit := dirSummaryPrompt("docs", "child summaries", 5)
+	if !strings.Contains(withLimit, "at most 5 words") {
+		t.Fatalf("expected word limit clause: %q", withLimit)
+	}
+
+	noLimit := dirSummaryPrompt("docs", "child summaries", 0)
+	if strings.Contains(noLimit, "at most") {
+		t.Fatalf("did not expect word limit clause: %q", noLimit)
+	}
+}
+
 func TestDefaultCodexProviderIsolatedForSummaries(t *testing.T) {
 	provider, err := providerConfigFor(defaultConfig(), "codex")
 	if err != nil {

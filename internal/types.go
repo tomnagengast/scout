@@ -9,6 +9,7 @@ type Config struct {
 	Model       string                       `toml:"model"`
 	Concurrency int                          `toml:"concurrency"`
 	MaxBytes    int                          `toml:"max_bytes"`
+	Limit       int                          `toml:"limit"`
 	NoCache     bool                         `toml:"no_cache"`
 	CacheDir    string                       `toml:"cache_dir"`
 	Quiet       bool                         `toml:"quiet"`

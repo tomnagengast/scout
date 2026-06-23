@@ -8,6 +8,19 @@ import (
 	"testing"
 )
 
+func TestCacheKeyVariesWithLimit(t *testing.T) {
+	base := Config{Provider: defaultProvider, Model: "test-model"}
+	limited := base
+	limited.Limit = 10
+
+	if cacheKey("note.md", "hello", base) == cacheKey("note.md", "hello", limited) {
+		t.Fatal("expected file cache key to vary with limit")
+	}
+	if dirCacheKey("docs", "rollup", base) == dirCacheKey("docs", "rollup", limited) {
+		t.Fatal("expected dir cache key to vary with limit")
+	}
+}
+
 func TestSummarizeFileUsesCache(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "note.md")

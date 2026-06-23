@@ -31,7 +31,7 @@ Rendering lives in `internal/render.go`. Managed writes live in `internal/write.
 
 ## Cache flow
 
-The cache is rebuildable derived data. A cache record stores only the generated description. File keys include file content, path, provider, provider command, provider args, model, and prompt version. Directory keys use the directory rollup content and a directory prompt version.
+The cache is rebuildable derived data. A cache record stores only the generated description. File keys include file content, path, provider, provider command, provider args, model, word limit, and prompt version. Directory keys use the directory rollup content and a directory prompt version.
 
 Changing provider configuration intentionally invalidates old summaries, because different agents or flags may produce different descriptions.
 

@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -320,6 +321,7 @@ func cacheKeyWithVersion(version, path, content string, cfg Config) string {
 		version,
 		cfg.Provider,
 		cfg.Model,
+		strconv.Itoa(cfg.Limit),
 		providerConfig.Command,
 		strings.Join(providerConfig.Args, "\x00"),
 		providerConfig.ModelArg,

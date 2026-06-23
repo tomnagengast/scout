@@ -82,6 +82,68 @@ func TestDiscoverTargetsFindsDirectories(t *testing.T) {
 	}
 }
 
+func TestDiscoverFilesDefaultRootAbsoluteInput(t *testing.T) {
+	// Regression guard for the CLI crash path: default root "" -> "." combined
+	// with an absolute input. Pointing at an absolute dir outside cwd must emit
+	// absolute paths instead of failing in filepath.Rel.
+	dirA := t.TempDir()
+	dirB := t.TempDir()
+	mustWrite(t, filepath.Join(dirB, "docs/a.md"), "a")
+	t.Chdir(dirA)
+
+	targets, err := discover(discoveryRequest{
+		paths:      []string{dirB},
+		targetType: discoveryTargetFiles,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := strings.Join(targetPaths(targets), ",")
+	want := filepath.ToSlash(filepath.Join(dirB, "docs/a.md"))
+	if got != want {
+		t.Fatalf("files mismatch: want %q got %q", want, got)
+	}
+}
+
+func TestDiscoverFilesAbsoluteInputInsideRoot(t *testing.T) {
+	dir := t.TempDir()
+	mustWrite(t, filepath.Join(dir, "docs/a.md"), "a")
+
+	targets, err := discover(discoveryRequest{
+		root:       dir,
+		paths:      []string{filepath.Join(dir, "docs")},
+		targetType: discoveryTargetFiles,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := strings.Join(targetPaths(targets), ",")
+	want := "docs/a.md"
+	if got != want {
+		t.Fatalf("files mismatch: want %q got %q", want, got)
+	}
+}
+
+func TestDiscoverFilesAbsoluteRootOutsideInput(t *testing.T) {
+	dirA := t.TempDir()
+	dirB := t.TempDir()
+	mustWrite(t, filepath.Join(dirB, "docs/a.md"), "a")
+
+	targets, err := discover(discoveryRequest{
+		root:       dirA,
+		paths:      []string{dirB},
+		targetType: discoveryTargetFiles,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := strings.Join(targetPaths(targets), ",")
+	want := filepath.ToSlash(filepath.Join(dirB, "docs/a.md"))
+	if got != want {
+		t.Fatalf("files mismatch: want %q got %q", want, got)
+	}
+}
+
 func targetPaths(targets []discoveredTarget) []string {
 	paths := make([]string, 0, len(targets))
 	for _, target := range targets {

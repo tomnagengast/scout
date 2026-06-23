@@ -22,7 +22,7 @@ func TestLoadConfigReadsUserProviderAndFlagOverrides(t *testing.T) {
 
 	configHome := filepath.Join(dir, "config")
 	t.Setenv("XDG_CONFIG_HOME", configHome)
-	mustWrite(t, filepath.Join(configHome, "scout.toml"), "provider = \"claude\"\n")
+	mustWrite(t, filepath.Join(configHome, "scout", "scout.toml"), "provider = \"claude\"\n")
 
 	flagCfg := defaultConfig()
 	cmd := &cobra.Command{}
@@ -59,14 +59,15 @@ func TestLoadConfigPreservesPrecedenceForUnchangedAndChangedFlags(t *testing.T) 
 	t.Setenv("SCOUT_PROVIDER", "env-provider")
 	t.Setenv("SCOUT_MODEL", "env-model")
 	t.Setenv("SCOUT_CACHE_DIR", "env-cache")
-	mustWrite(t, filepath.Join(configHome, "scout.toml"), strings.Join([]string{
+	mustWrite(t, filepath.Join(configHome, "scout", "scout.toml"), strings.Join([]string{
 		`provider = "user-provider"`,
 		`model = "user-model"`,
 		`format = "skill"`,
 		`concurrency = 3`,
 		`quiet = true`,
 	}, "\n"))
-	mustWrite(t, "scout.toml", strings.Join([]string{
+	mustWrite(t, filepath.Join(dir, ".git", "HEAD"), "")
+	mustWrite(t, filepath.Join(dir, ".config", "scout.toml"), strings.Join([]string{
 		`provider = "project-provider"`,
 		`format = "json"`,
 		`max_bytes = 123`,
@@ -130,6 +131,23 @@ func TestLoadConfigReadsTypeAndMaxDepthFlags(t *testing.T) {
 	}
 }
 
+func TestLoadConfigReadsLimitFlag(t *testing.T) {
+	flagCfg := defaultConfig()
+	cmd := &cobra.Command{}
+	bindConfigFlags(cmd, &flagCfg)
+	if err := cmd.ParseFlags([]string{"--limit", "12"}); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := loadConfig(flagCfg, changedConfigFlags(cmd))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Limit != 12 {
+		t.Fatalf("limit mismatch: %d", cfg.Limit)
+	}
+}
+
 func TestLoadConfigRejectsInvalidTypeAndMaxDepth(t *testing.T) {
 	tests := []struct {
 		name string
@@ -138,6 +156,7 @@ func TestLoadConfigRejectsInvalidTypeAndMaxDepth(t *testing.T) {
 	}{
 		{name: "bad type", args: []string{"--type", "other"}, want: `unsupported type "other"`},
 		{name: "bad depth", args: []string{"--max-depth", "-1"}, want: "max-depth must be at least 0"},
+		{name: "bad limit", args: []string{"--limit", "-1"}, want: "limit must be at least 0"},
 	}
 
 	for _, tt := range tests {

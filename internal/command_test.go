@@ -23,7 +23,7 @@ func TestExecuteUsesCobraRootCommand(t *testing.T) {
 
 	configHome := filepath.Join(dir, "config")
 	t.Setenv("XDG_CONFIG_HOME", configHome)
-	mustWrite(t, filepath.Join(configHome, "scout.toml"), strings.Join([]string{
+	mustWrite(t, filepath.Join(configHome, "scout", "scout.toml"), strings.Join([]string{
 		`provider = "fake"`,
 		`[providers.fake]`,
 		`command = "sh"`,
@@ -58,7 +58,7 @@ func TestExecuteSummarizesDirectories(t *testing.T) {
 
 	configHome := filepath.Join(dir, "config")
 	t.Setenv("XDG_CONFIG_HOME", configHome)
-	mustWrite(t, filepath.Join(configHome, "scout.toml"), strings.Join([]string{
+	mustWrite(t, filepath.Join(configHome, "scout", "scout.toml"), strings.Join([]string{
 		`provider = "fake"`,
 		`[providers.fake]`,
 		`command = "sh"`,
